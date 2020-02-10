@@ -3,8 +3,6 @@ package story.core
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.runBlocking
 
-val neverEnds = { _: Any -> false }
-
 suspend fun <T, V : Any> Story<V>.firstNotNull(filter: (V) -> T?): T? {
     var found: T? = null
     for (vision in subscribe()) {
