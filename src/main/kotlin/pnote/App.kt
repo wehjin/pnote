@@ -4,6 +4,8 @@
 package pnote
 
 import com.rubyhuntersky.story.core.Story
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pnote.ImportPassword.Action.SetPassword
 import pnote.ImportPassword.Vision
@@ -13,6 +15,7 @@ import pnote.scopes.AppScope
 import pnote.scopes.PasswordRef
 import pnote.scopes.ProjectorScope
 import java.io.File
+import kotlin.coroutines.CoroutineContext
 
 class App(private val commandName: String) : AppScope {
 
@@ -31,19 +34,9 @@ class App(private val commandName: String) : AppScope {
     }
 }
 
-fun main(args: Array<String>) {
-    val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
-    val commandName = "pnote$commandSuffix"
-    val app = App(commandName)
-    val story = app.importPasswordStory()
-
-    val projector = Projector()
-    runBlocking {
-        projector.projectImportPassword(story)
-    }
-}
-
 class Projector : ProjectorScope {
+    override val coroutineContext: CoroutineContext = Job()
+
     override fun promptLine(prompt: String, subject: String): String = print("$prompt: ").let {
         readLine() ?: error("Failed to read $subject")
     }
@@ -52,7 +45,18 @@ class Projector : ProjectorScope {
     override fun screenLine(line: String) = println(line)
 }
 
-suspend fun ProjectorScope.projectImportPassword(story: Story<Vision>) {
+fun main(args: Array<String>) {
+    val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
+    val commandName = "pnote$commandSuffix"
+    val app = App(commandName)
+    val projector = Projector()
+
+    val story = app.importPasswordStory()
+    val projection = projector.projectImportPassword(story)
+    runBlocking { projection.join() }
+}
+
+fun ProjectorScope.projectImportPassword(story: Story<Vision>) = launch {
     loop@ for (vision in story.subscribe()) {
         when (vision) {
             is GetPassword -> {
