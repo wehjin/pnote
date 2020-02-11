@@ -4,18 +4,8 @@ interface NoteBag {
     fun readBanners(): ReadBannersResult
 }
 
-sealed class ReadBannersResult {
-    object EmptyCryptor : ReadBannersResult()
 
-    data class LockedCryptor(
-        val accessLevel: AccessLevel
-    ) : ReadBannersResult()
-
-    data class Banners(
-        val accessLevel: AccessLevel,
-        val banners: Set<Banner>
-    ) : ReadBannersResult()
-}
+data class ReadBannersResult(val accessLevel: AccessLevel, val banners: Set<Banner>)
 
 sealed class Banner {
     abstract val itemId: Long

@@ -15,7 +15,7 @@ suspend fun <T, V : Any> Story<V>.firstNotNull(filter: (V) -> T?): T? {
     return found
 }
 
-suspend fun <V : Any, F : Any> Story<V>.scanVisions(timeout: Long, filter: (V) -> F?): F = withTimeout(timeout) {
+suspend fun <V : Any, F : Any> Story<V>.scan(timeout: Long, filter: (V) -> F?): F = withTimeout(timeout) {
     lateinit var found: F
     for (vision in subscribe()) {
         val result = filter(vision)

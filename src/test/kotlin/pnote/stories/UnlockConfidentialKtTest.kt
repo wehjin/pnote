@@ -10,7 +10,7 @@ import pnote.tools.AccessLevel
 import pnote.tools.Cryptor
 import pnote.tools.NoteBag
 import pnote.tools.memCryptor
-import story.core.scanVisions
+import story.core.scan
 
 internal class UnlockConfidentialKtTest {
 
@@ -26,9 +26,9 @@ internal class UnlockConfidentialKtTest {
         }
         val story = appScope.unlockConfidentialStory()
         runBlocking {
-            val unlocking = story.scanVisions(500) { it as? Unlocking }
+            val unlocking = story.scan(500) { it as? Unlocking }
             unlocking.setPassword(confidentialPassword)
-            story.scanVisions(500) { it as? Finished }
+            story.scan(500) { it as? Finished }
             assertEquals(AccessLevel.ConfidentialUnlocked, appScope.cryptor.accessLevel)
         }
     }
@@ -43,9 +43,9 @@ internal class UnlockConfidentialKtTest {
         }
         val story = appScope.unlockConfidentialStory()
         runBlocking {
-            val unlocking = story.scanVisions(500) { it as? Unlocking }
+            val unlocking = story.scan(500) { it as? Unlocking }
             unlocking.cancel()
-            story.scanVisions(500) { it as? Finished }
+            story.scan(500) { it as? Finished }
         }
     }
 }

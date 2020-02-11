@@ -13,23 +13,23 @@ enum class AccessLevel {
     Secret
 }
 
-fun memCryptor(storedSecret: String? = null): Cryptor = object : Cryptor {
+fun memCryptor(initSecret: String? = null, initPassword: String? = null): Cryptor = object : Cryptor {
 
-    private var confidentialSecret: String? = storedSecret
-    private var userSecret: String? = null
+    private var secret: String? = initSecret
+    private var password: String? = initPassword
 
     override val accessLevel: AccessLevel
         get() = when {
-            confidentialSecret == null -> AccessLevel.Empty
-            userSecret != null && userSecret == confidentialSecret -> AccessLevel.ConfidentialUnlocked
+            secret == null -> AccessLevel.Empty
+            password != null && password == secret -> AccessLevel.ConfidentialUnlocked
             else -> AccessLevel.ConfidentialLocked
         }
 
     override fun importConfidential(password: String) {
-        this.confidentialSecret = password
+        this.secret = password
     }
 
     override fun unlockConfidential(password: String) {
-        this.userSecret = password
+        this.password = password
     }
 }

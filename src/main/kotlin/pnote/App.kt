@@ -47,6 +47,16 @@ class App(private val commandName: String) : AppScope {
     override val logTag: String = commandName
 }
 
+fun main(args: Array<String>) {
+    val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
+    val commandName = "pnote$commandSuffix"
+    val app = App(commandName)
+    val story = app.importPasswordStory()
+    val projector = Projector()
+    val projection = projector.projectImportPassword(story)
+    runBlocking { projection.join() }
+}
+
 class Projector : ProjectorScope {
     override val coroutineContext: CoroutineContext = Job()
 
@@ -56,17 +66,6 @@ class Projector : ProjectorScope {
 
     override fun screenError(error: String) = println("ERROR: $error")
     override fun screenLine(line: String) = println(line)
-}
-
-fun main(args: Array<String>) {
-    val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
-    val commandName = "pnote$commandSuffix"
-    val app = App(commandName)
-    val projector = Projector()
-
-    val story = app.importPasswordStory()
-    val projection = projector.projectImportPassword(story)
-    runBlocking { projection.join() }
 }
 
 fun ProjectorScope.projectImportPassword(story: Story<Vision>) = launch {
