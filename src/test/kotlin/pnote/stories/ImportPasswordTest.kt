@@ -1,100 +1,74 @@
 package pnote.stories
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import pnote.scopes.AppScope
-import pnote.scopes.PasswordRef
-import pnote.stories.ImportPassword.Action.Cancel
-import pnote.stories.ImportPassword.Action.SetPassword
-import pnote.stories.ImportPassword.UserError.InvalidPassword
-import pnote.stories.ImportPassword.UserError.MismatchedPasswords
+import pnote.stories.ImportPassword.PasswordEntryError.InvalidPassword
+import pnote.stories.ImportPassword.PasswordEntryError.MismatchedPasswords
 import pnote.stories.ImportPassword.Vision.FinishedGetPassword
 import pnote.stories.ImportPassword.Vision.GetPassword
+import pnote.tools.AccessLevel
+import pnote.tools.Cryptor
 import pnote.tools.NoteBag
-import story.core.firstNotNull
+import pnote.tools.memCryptor
+import story.core.scanVisions
 
 class ImportPasswordTest : AppScope {
-
     override val logTag: String = "ImportPasswordTest"
-
-    override val noteBag: NoteBag
-        get() = error("not implemented")
-
-    override fun importPassword(password: String): PasswordRef {
-        return 137
-    }
+    override val cryptor: Cryptor = memCryptor()
+    override val noteBag: NoteBag get() = error("not implemented")
 
     private val story = importPasswordStory()
 
     @Test
     internal fun `story starts with empty fields`() {
-        val vision = story.subscribe().poll()
-        assertEquals(GetPassword("", "", null), vision)
-    }
-
-    @Test
-    internal fun `story finishes with matching passwords`() {
-        story.offer(SetPassword("hey", "hey"))
-        val passwordRef = runBlocking {
-            withTimeoutOrNull(500) {
-                story.firstNotNull {
-                    if (it is FinishedGetPassword) {
-                        it.passwordRef
-                    } else null
-                }
-            }
+        runBlocking {
+            val getPassword = story.scanVisions(300) { it as? GetPassword }
+            assertEquals("", getPassword.password)
+            assertEquals("", getPassword.check)
+            assertEquals(null, getPassword.passwordEntryError)
         }
-        assertEquals(137, passwordRef)
     }
 
     @Test
     internal fun `story finishes after cancel`() {
-        story.offer(Cancel)
-        val hasPassword = runBlocking {
-            withTimeoutOrNull(500) {
-                story.firstNotNull {
-                    if (it is FinishedGetPassword) {
-                        it.passwordRef != null
-                    } else null
-                }
-            }
+        runBlocking {
+            val getPassword = story.scanVisions(300) { it as? GetPassword }
+            getPassword.cancel()
+
+            story.scanVisions(300) { it as? FinishedGetPassword }
+            assertEquals(AccessLevel.Empty, cryptor.accessLevel)
         }
-        assertEquals(false, hasPassword)
+    }
+
+    @Test
+    internal fun `story finishes with matching passwords`() {
+        runBlocking {
+            val getPassword = story.scanVisions(300) { it as? GetPassword }
+            getPassword.setPassword("hey", "hey")
+            story.scanVisions(300) { it as? FinishedGetPassword }
+            assertEquals(AccessLevel.ConfidentialLocked, cryptor.accessLevel)
+        }
     }
 
     @Test
     internal fun `story errors with empty password`() {
-        story.offer(SetPassword("", "hello"))
-        val error = runBlocking {
-            withTimeoutOrNull(500) {
-                story.firstNotNull { vision ->
-                    if (vision is GetPassword && vision.error != null) {
-                        vision.error
-                    } else {
-                        null
-                    }
-                }
-            }
+        runBlocking {
+            val getPassword = story.scanVisions(300) { it as? GetPassword }
+            getPassword.setPassword("", "hello")
+            val entryError = story.scanVisions(300) { (it as? GetPassword)?.passwordEntryError }
+            assertEquals(InvalidPassword, entryError)
         }
-        assertEquals(InvalidPassword, error)
     }
 
     @Test
     internal fun `story errors with mismatched passwords`() {
-        story.offer(SetPassword("hello", "Hello"))
-        val error = runBlocking {
-            withTimeoutOrNull(500) {
-                story.firstNotNull { vision ->
-                    if (vision is GetPassword && vision.error != null) {
-                        vision.error
-                    } else {
-                        null
-                    }
-                }
-            }
+        runBlocking {
+            val getPassword = story.scanVisions(300) { it as? GetPassword }
+            getPassword.setPassword("hello", "Hello")
+            val entryError = story.scanVisions(300) { (it as? GetPassword)?.passwordEntryError }
+            assertEquals(MismatchedPasswords, entryError)
         }
-        assertEquals(MismatchedPasswords, error)
     }
 }

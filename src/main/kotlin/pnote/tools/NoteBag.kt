@@ -1,7 +1,5 @@
 package pnote.tools
 
-import pnote.AccessLevel
-
 interface NoteBag {
     fun readBanners(): ReadBannersResult
 }

@@ -1,7 +1,7 @@
 package story.core
 
 import com.rubyhuntersky.story.core.Story
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 
 suspend fun <T, V : Any> Story<V>.firstNotNull(filter: (V) -> T?): T? {
     var found: T? = null
@@ -15,13 +15,14 @@ suspend fun <T, V : Any> Story<V>.firstNotNull(filter: (V) -> T?): T? {
     return found
 }
 
-fun <V : Any> Story<V>.awaitEnding(): V = runBlocking {
-    lateinit var ending: V
+suspend fun <V : Any, F : Any> Story<V>.scanVisions(timeout: Long, filter: (V) -> F?): F = withTimeout(timeout) {
+    lateinit var found: F
     for (vision in subscribe()) {
-        if (isStoryOver(vision)) {
-            ending = vision
+        val result = filter(vision)
+        if (result != null) {
+            found = result
             break
         }
     }
-    ending
+    found
 }

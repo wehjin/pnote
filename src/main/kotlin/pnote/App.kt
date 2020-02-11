@@ -8,27 +8,35 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pnote.scopes.AppScope
-import pnote.scopes.PasswordRef
 import pnote.scopes.ProjectorScope
-import pnote.stories.ImportPassword.Action.SetPassword
 import pnote.stories.ImportPassword.Vision
 import pnote.stories.ImportPassword.Vision.FinishedGetPassword
 import pnote.stories.ImportPassword.Vision.GetPassword
 import pnote.stories.importPasswordStory
+import pnote.tools.AccessLevel
+import pnote.tools.Cryptor
 import pnote.tools.NoteBag
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 
 class App(private val commandName: String) : AppScope {
 
+    override val cryptor: Cryptor = object : Cryptor {
+        override val accessLevel: AccessLevel
+            get() = error("not implemented")
+
+        override fun importConfidential(password: String) {
+            // TODO Use key store
+            File(userDir, "key1").writeText(password)
+        }
+
+        override fun unlockConfidential(password: String) {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+    }
+
     override val noteBag: NoteBag
         get() = TODO("not implemented")
-
-    override fun importPassword(password: String): PasswordRef {
-        // TODO Use key store
-        File(userDir, "key1").writeText(password)
-        return 1
-    }
 
     private val userDir: File = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
         .let { appDir -> File(appDir, ".$commandName").also { it.mkdirs() } }
@@ -66,15 +74,15 @@ fun ProjectorScope.projectImportPassword(story: Story<Vision>) = launch {
         when (vision) {
             is GetPassword -> {
                 screenLine()
-                vision.error?.let { screenError("$it") }
+                vision.passwordEntryError?.let { screenError("$it") }
                 val passwordLine = promptLine("Enter password", "password")
                 val checkLine = promptLine("Re-enter password", "password check")
                 if (passwordLine.isNotEmpty() && checkLine.isNotEmpty()) {
-                    story.offer(SetPassword(passwordLine, checkLine))
+                    vision.setPassword(passwordLine, checkLine)
                 } else break@loop
             }
             is FinishedGetPassword -> {
-                screenLine("Got password: ${vision.passwordRef}")
+                screenLine("Got password")
                 break@loop
             }
         }

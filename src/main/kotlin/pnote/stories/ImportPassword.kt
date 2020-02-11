@@ -3,51 +3,49 @@ package pnote.stories
 import com.rubyhuntersky.story.core.matchingStory
 import com.rubyhuntersky.story.core.scopes.on
 import pnote.scopes.AppScope
-import pnote.scopes.PasswordRef
-import pnote.stories.ImportPassword.Action.Cancel
-import pnote.stories.ImportPassword.Action.SetPassword
-import pnote.stories.ImportPassword.UserError
+import pnote.stories.ImportConfidentialAction.Cancel
+import pnote.stories.ImportConfidentialAction.SetPassword
+import pnote.stories.ImportPassword.PasswordEntryError
+import pnote.stories.ImportPassword.Vision.FinishedGetPassword
 import pnote.stories.ImportPassword.Vision.GetPassword
 
 object ImportPassword {
-
     sealed class Vision {
-        data class GetPassword(val password: String, val check: String, val error: UserError?) : Vision()
-        data class FinishedGetPassword(val passwordRef: PasswordRef?) : Vision()
-    }
+        class GetPassword(
+            private val offer: (Any) -> Boolean,
+            val password: String,
+            val check: String,
+            val passwordEntryError: PasswordEntryError?
+        ) : Vision() {
+            fun setPassword(passwordLine: String, checkLine: String) = offer(SetPassword(passwordLine, checkLine))
+            fun cancel() = offer(Cancel)
+        }
 
-    sealed class Action {
-        object Cancel : Action()
-        data class SetPassword(val passwordLine: String, val checkLine: String) : Action()
+        object FinishedGetPassword : Vision()
     }
 
     enum class Subject { Password, Check }
+    enum class PasswordEntryError { InvalidPassword, MismatchedPasswords }
+}
 
-    enum class UserError {
-        InvalidPassword,
-        MismatchedPasswords,
-    }
+private sealed class ImportConfidentialAction {
+    object Cancel : ImportConfidentialAction()
+    data class SetPassword(val passwordLine: String, val checkLine: String) : ImportConfidentialAction()
 }
 
 fun AppScope.importPasswordStory() = matchingStory<ImportPassword.Vision>(
     name = "ImportPassword",
-    toFirstVision = { GetPassword("", "", null) },
-    isLastVision = { vision -> vision is ImportPassword.Vision.FinishedGetPassword },
+    toFirstVision = { GetPassword(offer, "", "", null) },
+    isLastVision = { vision -> vision is FinishedGetPassword },
     updateRules = {
-        on<Cancel, ImportPassword.Vision, GetPassword> {
-            ImportPassword.Vision.FinishedGetPassword(null)
-        }
+        on<Cancel, ImportPassword.Vision, GetPassword> { FinishedGetPassword }
         on<SetPassword, ImportPassword.Vision, GetPassword> {
             val password = action.passwordLine
             val check = action.checkLine
             when {
-                password.isEmpty() -> GetPassword(password, check, UserError.InvalidPassword)
-                check != password -> GetPassword(password, check, UserError.MismatchedPasswords)
-                else -> ImportPassword.Vision.FinishedGetPassword(
-                    importPassword(
-                        password
-                    )
-                )
+                password.isEmpty() -> GetPassword(offer, password, check, PasswordEntryError.InvalidPassword)
+                check != password -> GetPassword(offer, password, check, PasswordEntryError.MismatchedPasswords)
+                else -> cryptor.importConfidential(password).let { FinishedGetPassword }
             }
         }
     }
