@@ -7,19 +7,28 @@ import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import pnote.ImportPassword.Action.SetPassword
-import pnote.ImportPassword.Vision
-import pnote.ImportPassword.Vision.FinishedGetPassword
-import pnote.ImportPassword.Vision.GetPassword
 import pnote.scopes.AppScope
 import pnote.scopes.PasswordRef
 import pnote.scopes.ProjectorScope
+import pnote.stories.ImportPassword.Action.SetPassword
+import pnote.stories.ImportPassword.Vision
+import pnote.stories.ImportPassword.Vision.FinishedGetPassword
+import pnote.stories.ImportPassword.Vision.GetPassword
+import pnote.stories.importPasswordStory
+import pnote.tools.NoteBag
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 
 class App(private val commandName: String) : AppScope {
 
-    override val logTag: String = commandName
+    override val noteBag: NoteBag
+        get() = TODO("not implemented")
+
+    override fun importPassword(password: String): PasswordRef {
+        // TODO Use key store
+        File(userDir, "key1").writeText(password)
+        return 1
+    }
 
     private val userDir: File = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
         .let { appDir -> File(appDir, ".$commandName").also { it.mkdirs() } }
@@ -27,11 +36,7 @@ class App(private val commandName: String) : AppScope {
             File(userDir, "main").also { it.mkdirs() }
         }
 
-    override fun importPassword(password: String): PasswordRef {
-        // TODO Use key store
-        File(userDir, "key1").writeText(password)
-        return 1
-    }
+    override val logTag: String = commandName
 }
 
 class Projector : ProjectorScope {

@@ -1,21 +1,26 @@
-package pnote
+package pnote.stories
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import pnote.ImportPassword.Action.Cancel
-import pnote.ImportPassword.Action.SetPassword
-import pnote.ImportPassword.UserError.InvalidPassword
-import pnote.ImportPassword.UserError.MismatchedPasswords
-import pnote.ImportPassword.Vision.FinishedGetPassword
-import pnote.ImportPassword.Vision.GetPassword
 import pnote.scopes.AppScope
 import pnote.scopes.PasswordRef
+import pnote.stories.ImportPassword.Action.Cancel
+import pnote.stories.ImportPassword.Action.SetPassword
+import pnote.stories.ImportPassword.UserError.InvalidPassword
+import pnote.stories.ImportPassword.UserError.MismatchedPasswords
+import pnote.stories.ImportPassword.Vision.FinishedGetPassword
+import pnote.stories.ImportPassword.Vision.GetPassword
+import pnote.tools.NoteBag
 import story.core.firstNotNull
 
 class ImportPasswordTest : AppScope {
+
     override val logTag: String = "ImportPasswordTest"
+
+    override val noteBag: NoteBag
+        get() = error("not implemented")
 
     override fun importPassword(password: String): PasswordRef {
         return 137

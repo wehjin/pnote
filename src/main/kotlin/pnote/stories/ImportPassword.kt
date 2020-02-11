@@ -1,13 +1,13 @@
-package pnote
+package pnote.stories
 
 import com.rubyhuntersky.story.core.matchingStory
 import com.rubyhuntersky.story.core.scopes.on
-import pnote.ImportPassword.Action.Cancel
-import pnote.ImportPassword.Action.SetPassword
-import pnote.ImportPassword.UserError
-import pnote.ImportPassword.Vision.GetPassword
 import pnote.scopes.AppScope
 import pnote.scopes.PasswordRef
+import pnote.stories.ImportPassword.Action.Cancel
+import pnote.stories.ImportPassword.Action.SetPassword
+import pnote.stories.ImportPassword.UserError
+import pnote.stories.ImportPassword.Vision.GetPassword
 
 object ImportPassword {
 
@@ -31,8 +31,8 @@ object ImportPassword {
 
 fun AppScope.importPasswordStory() = matchingStory<ImportPassword.Vision>(
     name = "ImportPassword",
-    init = GetPassword("", "", null),
-    isOver = { vision -> vision is ImportPassword.Vision.FinishedGetPassword },
+    toFirstVision = { GetPassword("", "", null) },
+    isLastVision = { vision -> vision is ImportPassword.Vision.FinishedGetPassword },
     updateRules = {
         on<Cancel, ImportPassword.Vision, GetPassword> {
             ImportPassword.Vision.FinishedGetPassword(null)
@@ -43,7 +43,11 @@ fun AppScope.importPasswordStory() = matchingStory<ImportPassword.Vision>(
             when {
                 password.isEmpty() -> GetPassword(password, check, UserError.InvalidPassword)
                 check != password -> GetPassword(password, check, UserError.MismatchedPasswords)
-                else -> ImportPassword.Vision.FinishedGetPassword(importPassword(password))
+                else -> ImportPassword.Vision.FinishedGetPassword(
+                    importPassword(
+                        password
+                    )
+                )
             }
         }
     }
