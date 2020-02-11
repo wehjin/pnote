@@ -24,7 +24,7 @@ internal class UnlockConfidentialKtTest {
             override val cryptor: Cryptor = memCryptor("1234")
             override val logTag: String = logTag
         }
-        val story = appScope.unlockConfidentialStory()
+        val story = appScope.unlockConfidential()
         runBlocking {
             val unlocking = story.scan(500) { it as? Unlocking }
             unlocking.setPassword(confidentialPassword)
@@ -41,7 +41,7 @@ internal class UnlockConfidentialKtTest {
             override val cryptor: Cryptor = memCryptor("1234")
             override val logTag: String = logTag
         }
-        val story = appScope.unlockConfidentialStory()
+        val story = appScope.unlockConfidential()
         runBlocking {
             val unlocking = story.scan(500) { it as? Unlocking }
             unlocking.cancel()

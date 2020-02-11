@@ -3,21 +3,13 @@
  */
 package pnote
 
-import com.rubyhuntersky.story.core.Story
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import pnote.projections.projectBrowseNotes
 import pnote.scopes.AppScope
-import pnote.scopes.ProjectorScope
-import pnote.stories.ImportPassword.Vision
-import pnote.stories.ImportPassword.Vision.FinishedGetPassword
-import pnote.stories.ImportPassword.Vision.GetPassword
-import pnote.stories.importPasswordStory
-import pnote.tools.Cryptor
-import pnote.tools.NoteBag
-import pnote.tools.fileCryptor
+import pnote.stories.browseNotes
+import pnote.tools.*
+import pnote.tools.AccessLevel.*
 import java.io.File
-import kotlin.coroutines.CoroutineContext
 
 class App(private val commandName: String) : AppScope {
     private val homeDir = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
@@ -26,8 +18,14 @@ class App(private val commandName: String) : AppScope {
 
     override val cryptor: Cryptor = fileCryptor(userDir)
 
-    override val noteBag: NoteBag
-        get() = TODO("not implemented")
+    override val noteBag: NoteBag = object : NoteBag {
+        override fun readBanners(): ReadBannersResult = when (val accessLevel = cryptor.accessLevel) {
+            Empty -> ReadBannersResult(accessLevel, emptySet())
+            ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
+            ConfidentialUnlocked -> ReadBannersResult(accessLevel, setOf(Banner.Basic(1, "Sample")))
+            Secret -> TODO()
+        }
+    }
 
     override val logTag: String = commandName
 }
@@ -36,39 +34,9 @@ fun main(args: Array<String>) {
     val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
     val commandName = "pnote$commandSuffix"
     val app = App(commandName)
-    val story = app.importPasswordStory()
+    val story = app.browseNotes()
     val projector = Projector()
-    val projection = projector.projectImportPassword(story)
+    val projection = projector.projectBrowseNotes(story)
     runBlocking { projection.join() }
 }
 
-class Projector : ProjectorScope {
-    override val coroutineContext: CoroutineContext = Job()
-
-    override fun promptLine(prompt: String, subject: String): String = print("$prompt: ").let {
-        readLine() ?: error("Failed to read $subject")
-    }
-
-    override fun screenError(error: String) = println("ERROR: $error")
-    override fun screenLine(line: String) = println(line)
-}
-
-fun ProjectorScope.projectImportPassword(story: Story<Vision>) = launch {
-    loop@ for (vision in story.subscribe()) {
-        when (vision) {
-            is GetPassword -> {
-                screenLine()
-                vision.passwordEntryError?.let { screenError("$it") }
-                val passwordLine = promptLine("Enter password", "password")
-                val checkLine = promptLine("Re-enter password", "password check")
-                if (passwordLine.isNotEmpty() && checkLine.isNotEmpty()) {
-                    vision.setPassword(passwordLine, checkLine)
-                } else break@loop
-            }
-            is FinishedGetPassword -> {
-                screenLine("Got password")
-                break@loop
-            }
-        }
-    }
-}

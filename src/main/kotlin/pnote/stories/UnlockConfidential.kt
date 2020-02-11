@@ -10,7 +10,7 @@ import pnote.stories.UnlockConfidentialAction.Cancel
 import pnote.stories.UnlockConfidentialAction.SetPassword
 import pnote.tools.AccessLevel
 
-fun AppScope.unlockConfidentialStory() = matchingStory<UnlockConfidential>(
+fun AppScope.unlockConfidential() = matchingStory<UnlockConfidential>(
     name = "UnlockCurrentLevel",
     isLastVision = { it is Finished },
     toFirstVision = { Unlocking(offer, null) }
