@@ -1,8 +1,11 @@
 package pnote.tools
 
+import java.io.File
+import kotlin.properties.ReadWriteProperty
+
 interface Cryptor {
     val accessLevel: AccessLevel
-    fun importConfidential(password: String)
+    fun importConfidential(secret: String)
     fun unlockConfidential(password: String)
 }
 
@@ -13,10 +16,22 @@ enum class AccessLevel {
     Secret
 }
 
-fun memCryptor(initSecret: String? = null, initPassword: String? = null): Cryptor = object : Cryptor {
+fun fileCryptor(dir: File): Cryptor = secretPasswordCryptor(
+    secretDelegate = FileStringDelegate(File(dir, "secret")),
+    passwordDelegate = StringDelegate()
+)
 
-    private var secret: String? = initSecret
-    private var password: String? = initPassword
+fun memCryptor(initSecret: String? = null, initPassword: String? = null): Cryptor = secretPasswordCryptor(
+    secretDelegate = StringDelegate(initSecret),
+    passwordDelegate = StringDelegate(initPassword)
+)
+
+fun secretPasswordCryptor(
+    secretDelegate: ReadWriteProperty<Cryptor, String?>,
+    passwordDelegate: ReadWriteProperty<Cryptor, String?>
+) = object : Cryptor {
+    private var secret: String? by secretDelegate
+    private var password: String? by passwordDelegate
 
     override val accessLevel: AccessLevel
         get() = when {
@@ -25,11 +40,14 @@ fun memCryptor(initSecret: String? = null, initPassword: String? = null): Crypto
             else -> AccessLevel.ConfidentialLocked
         }
 
-    override fun importConfidential(password: String) {
-        this.secret = password
+    override fun importConfidential(secret: String) {
+        this.secret = secret
+        this.password = null
     }
 
     override fun unlockConfidential(password: String) {
-        this.password = password
+        if (this.secret != null) {
+            this.password = password
+        }
     }
 }

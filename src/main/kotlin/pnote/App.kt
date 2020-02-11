@@ -13,36 +13,21 @@ import pnote.stories.ImportPassword.Vision
 import pnote.stories.ImportPassword.Vision.FinishedGetPassword
 import pnote.stories.ImportPassword.Vision.GetPassword
 import pnote.stories.importPasswordStory
-import pnote.tools.AccessLevel
 import pnote.tools.Cryptor
 import pnote.tools.NoteBag
+import pnote.tools.fileCryptor
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 
 class App(private val commandName: String) : AppScope {
+    private val homeDir = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
+    private val appDir = homeDir.let { home -> File(home, ".$commandName").apply { mkdirs() } }
+    private val userDir = appDir.let { app -> File(app, "main").apply { mkdirs() } }
 
-    override val cryptor: Cryptor = object : Cryptor {
-        override val accessLevel: AccessLevel
-            get() = error("not implemented")
-
-        override fun importConfidential(password: String) {
-            // TODO Use key store
-            File(userDir, "key1").writeText(password)
-        }
-
-        override fun unlockConfidential(password: String) {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-        }
-    }
+    override val cryptor: Cryptor = fileCryptor(userDir)
 
     override val noteBag: NoteBag
         get() = TODO("not implemented")
-
-    private val userDir: File = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
-        .let { appDir -> File(appDir, ".$commandName").also { it.mkdirs() } }
-        .let { userDir ->
-            File(userDir, "main").also { it.mkdirs() }
-        }
 
     override val logTag: String = commandName
 }
