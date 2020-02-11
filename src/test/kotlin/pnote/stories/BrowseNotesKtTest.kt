@@ -13,10 +13,10 @@ import pnote.tools.ReadBannersResult
 internal class BrowseNotesKtTest {
 
     @Test
-    internal fun `vision contains banners when cryptor is unlocked`() {
+    internal fun happy() {
         val bannerSet = setOf(Banner.Basic(1, "Hello"))
         val appScope = object : AppScope {
-            override val logTag: String = "BrowseNotesKtTest/unlocked"
+            override val logTag: String = "${this.javaClass.simpleName}/happy"
 
             override val noteBag: NoteBag = object : NoteBag {
                 override fun readBanners(): ReadBannersResult {
@@ -30,8 +30,12 @@ internal class BrowseNotesKtTest {
         }
 
         val story = appScope.browseNotes()
-        val vision = runBlocking { story.subscribe().receive() }
-        vision as BrowsingNotes
-        assertEquals(bannerSet, vision.banners)
+        runBlocking {
+            val browsing = story.subscribe().receive() as BrowsingNotes
+            assertEquals(bannerSet, browsing.banners)
+
+            browsing.cancel()
+            story.subscribe().receive() as FinishedBrowsingNotes
+        }
     }
 }
