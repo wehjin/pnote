@@ -15,12 +15,14 @@ fun AppScope.unlockConfidential() = matchingStory<UnlockConfidential>(
     isLastVision = { it is Finished },
     toFirstVision = { Unlocking(offer, null) }
 ) {
-    onAction<Cancel, UnlockConfidential> { Finished }
+    onAction<Cancel, UnlockConfidential> {
+        Finished(true)
+    }
     on<SetPassword, UnlockConfidential, Unlocking> {
         cryptor.unlockConfidential(action.passwordLine)
         val newAccessLevel = cryptor.accessLevel
         if (newAccessLevel == AccessLevel.ConfidentialUnlocked) {
-            Finished
+            Finished(false)
         } else {
             Unlocking(offer, action.passwordLine)
         }
@@ -38,7 +40,7 @@ sealed class UnlockConfidential(private val offer: ((Any) -> Boolean)? = null) {
         fun setPassword(passwordLine: String) = offer(SetPassword(passwordLine))
     }
 
-    object Finished : UnlockConfidential()
+    data class Finished(val wasCancelled: Boolean) : UnlockConfidential()
 }
 
 

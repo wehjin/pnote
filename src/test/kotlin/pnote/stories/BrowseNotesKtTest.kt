@@ -21,7 +21,6 @@ internal class BrowseNotesKtTest {
                 AccessLevel.Empty -> ReadBannersResult(accessLevel, emptySet())
                 AccessLevel.ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
                 AccessLevel.ConfidentialUnlocked -> ReadBannersResult(accessLevel, bannerSet)
-                AccessLevel.Secret -> ReadBannersResult(accessLevel, emptySet())
             }
         }
     }

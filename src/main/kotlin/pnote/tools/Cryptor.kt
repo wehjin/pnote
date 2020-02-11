@@ -12,8 +12,7 @@ interface Cryptor {
 enum class AccessLevel {
     Empty,
     ConfidentialLocked,
-    ConfidentialUnlocked,
-    Secret
+    ConfidentialUnlocked
 }
 
 fun fileCryptor(dir: File): Cryptor = secretPasswordCryptor(

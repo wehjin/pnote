@@ -15,28 +15,38 @@ import pnote.tools.Banner
 fun AppScope.browseNotes(): Story<BrowseNotes> = matchingStory(
     name = "BrowseNotes",
     isLastVision = { it is Finished },
-    toFirstVision = { initBrowseNotes(this) },
+    toFirstVision = { init(this) },
     updateRules = {
-        onAction<Cancel, BrowseNotes> { Finished }
-        onAction<Reload, BrowseNotes> { initBrowseNotes(this) }
+        onAction<Cancel, BrowseNotes> {
+            Finished
+        }
+        onAction<Reload, BrowseNotes> {
+            init(this)
+        }
     }
 )
 
-private fun AppScope.initBrowseNotes(
-    storyInitScope: StoryInitScope<BrowseNotes>
-): BrowseNotes = noteBag.readBanners().let {
-    val (accessLevel, banners) = it
-    when (accessLevel) {
-        AccessLevel.Empty -> Importing(storyInitScope.offer, importPassword()).also {
-            storyInitScope.offerWhenStoryEnds(it.substory) { Reload }
+private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNotes =
+    noteBag.readBanners().let { (accessLevel, banners) ->
+        when (accessLevel) {
+            AccessLevel.Empty -> Importing(
+                storyInitScope.offer,
+                importPassword()
+                    .also { storyInitScope.offerWhenStoryEnds(it) { Reload } }
+            )
+            AccessLevel.ConfidentialLocked -> Unlocking(
+                storyInitScope.offer,
+                unlockConfidential()
+                    .also {
+                        storyInitScope.offerWhenStoryEnds(it) {
+                            val unlockWasCancelled = (ending as UnlockConfidential.Finished).wasCancelled
+                            if (unlockWasCancelled) Cancel else Reload
+                        }
+                    }
+            )
+            AccessLevel.ConfidentialUnlocked -> Browsing(storyInitScope.offer, banners)
         }
-        AccessLevel.ConfidentialLocked -> Unlocking(storyInitScope.offer, unlockConfidential()).also {
-            storyInitScope.offerWhenStoryEnds(it.substory) { Reload }
-        }
-        AccessLevel.ConfidentialUnlocked -> Browsing(storyInitScope.offer, banners)
-        AccessLevel.Secret -> TODO()
     }
-}
 
 sealed class BrowseNotes(private val offer: ((Any) -> Boolean)? = null) {
 
@@ -44,7 +54,7 @@ sealed class BrowseNotes(private val offer: ((Any) -> Boolean)? = null) {
 
     class Importing(
         offer: (Any) -> Boolean,
-        val substory: Story<ImportPassword.Vision>
+        val substory: Story<ImportPasswordVision>
     ) : BrowseNotes(offer)
 
     class Unlocking(

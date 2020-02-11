@@ -4,30 +4,33 @@ import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.launch
 import pnote.scopes.ProjectorScope
 import pnote.stories.BrowseNotes
+import pnote.stories.BrowseNotes.*
 import pnote.stories.UnlockConfidential
 import pnote.tools.Banner
 
 fun ProjectorScope.projectBrowseNotes(story: Story<BrowseNotes>) = launch {
     visionLoop@ for (vision in story.subscribe()) {
         when (vision) {
-            is BrowseNotes.Importing -> projectImportPassword(vision.substory)
-            is BrowseNotes.Unlocking -> projectUnlockConfidential(vision.substory)
-            is BrowseNotes.Browsing -> {
+            is Importing -> projectImportPassword(vision.substory)
+            is Unlocking -> projectUnlockConfidential(vision.substory)
+            is Browsing -> {
                 screenLine()
-                screenLine("Notes (Confidential)")
                 vision.banners.forEachIndexed { i, banner ->
                     banner as Banner.Basic
                     val message = banner.title
                     screenLine("${i + 1}:\u2002$message")
                 }
-                for (command in generateSequence { promptLine("CONFIDENTIAL", "command") }) {
-                    when (command) {
-                        "", "done", "quit", "exit", "lock", "bye" -> break@visionLoop
-                        else -> screenError("Hmm. I fail to understand the significance of this command: '$command'")
+                commandLoop@ for (command in generateSequence { promptLine("CONFIDENTIAL", "command") }) {
+                    val done = when (command) {
+                        "", "done", "quit", "exit", "lock", "bye" -> true.also {
+                            vision.cancel()
+                        }
+                        else -> false.also { screenError("Hmm. I fail to understand the significance of this command '$command'") }
                     }
+                    if (done) break@commandLoop
                 }
             }
-            BrowseNotes.Finished -> break@visionLoop
+            Finished -> break@visionLoop
         }
     }
 }
@@ -41,9 +44,13 @@ fun ProjectorScope.projectUnlockConfidential(story: Story<UnlockConfidential>) =
                     screenError("Invalid password")
                 }
                 val passwordLine = promptLine("Enter password", "unlock-password")
-                vision.setPassword(passwordLine)
+                if (passwordLine.isBlank()) {
+                    vision.cancel()
+                } else {
+                    vision.setPassword(passwordLine)
+                }
             }
-            UnlockConfidential.Finished -> break@visionLoop
+            is UnlockConfidential.Finished -> break@visionLoop
         }
     }
 }

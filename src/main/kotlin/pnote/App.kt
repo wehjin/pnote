@@ -23,7 +23,6 @@ class App(private val commandName: String) : AppScope {
             Empty -> ReadBannersResult(accessLevel, emptySet())
             ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
             ConfidentialUnlocked -> ReadBannersResult(accessLevel, setOf(Banner.Basic(1, "Sample")))
-            Secret -> TODO()
         }
     }
 

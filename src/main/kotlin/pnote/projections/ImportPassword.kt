@@ -3,24 +3,25 @@ package pnote.projections
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.launch
 import pnote.scopes.ProjectorScope
-import pnote.stories.ImportPassword
+import pnote.stories.ImportPasswordVision
+import pnote.stories.ImportPasswordVision.FinishedGetPassword
+import pnote.stories.ImportPasswordVision.GetPassword
 
-fun ProjectorScope.projectImportPassword(story: Story<ImportPassword.Vision>) = launch {
+fun ProjectorScope.projectImportPassword(story: Story<ImportPasswordVision>) = launch {
     loop@ for (vision in story.subscribe()) {
         when (vision) {
-            is ImportPassword.Vision.GetPassword -> {
+            is GetPassword -> {
                 screenLine()
                 vision.passwordEntryError?.let { screenError("$it") }
                 val passwordLine = promptLine("Enter password", "password")
                 val checkLine = promptLine("Re-enter password", "password check")
                 if (passwordLine.isNotEmpty() && checkLine.isNotEmpty()) {
                     vision.setPassword(passwordLine, checkLine)
-                } else break@loop
+                } else {
+                    vision.cancel()
+                }
             }
-            is ImportPassword.Vision.FinishedGetPassword -> {
-                screenLine("Got password")
-                break@loop
-            }
+            is FinishedGetPassword -> break@loop
         }
     }
 }

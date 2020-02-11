@@ -4,10 +4,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import pnote.scopes.AppScope
-import pnote.stories.ImportPassword.PasswordEntryError.InvalidPassword
-import pnote.stories.ImportPassword.PasswordEntryError.MismatchedPasswords
-import pnote.stories.ImportPassword.Vision.FinishedGetPassword
-import pnote.stories.ImportPassword.Vision.GetPassword
+import pnote.stories.ImportPasswordVision.FinishedGetPassword
+import pnote.stories.ImportPasswordVision.GetPassword
+import pnote.stories.PasswordEntryError.InvalidPassword
+import pnote.stories.PasswordEntryError.MismatchedPasswords
 import pnote.tools.AccessLevel
 import pnote.tools.Cryptor
 import pnote.tools.NoteBag
