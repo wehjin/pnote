@@ -5,18 +5,16 @@ import pnote.tools.security.load.*
 import java.io.File
 import java.util.*
 
-class CipherItem(private val file: File) {
-
+class CipherItem(
+    private val file: File
+) {
     val id: String by lazy { file.nameWithoutExtension }
-
-    private val cipherLoadItemType: Pair<CipherLoad, ItemType<*>> by lazy {
-        decode(
-            file
-        )
-    }
+    private val cipherLoadItemType: Pair<CipherLoad, ItemType<*>> by lazy { decode(file) }
     private val cipherLoad: CipherLoad get() = cipherLoadItemType.first
 
-    fun <T : Any, R> visit(
+    fun <T : Any> get(password: CharArray, itemType: ItemType<T>): T = map(password, itemType) { plainValue }
+
+    fun <T : Any, R> map(
         password: CharArray,
         itemType: ItemType<T>,
         block: ItemVisitScope<T>.() -> R
@@ -31,6 +29,10 @@ class CipherItem(private val file: File) {
                 }
                 scope.block()
             }
+    }
+
+    fun unlink() {
+        file.delete()
     }
 }
 
@@ -54,6 +56,13 @@ fun <T : Any> cipherItem(hostDir: File, password: CharArray, plainItem: PlainIte
             )
         }
     )
+}
+
+fun cipherItem(hostDir: File, id: String): CipherItem? {
+    val itemFile = File(hostDir, id)
+    return if (itemFile.exists() && itemFile.isFile) {
+        CipherItem(itemFile)
+    } else null
 }
 
 fun decode(file: File): Pair<CipherLoad, ItemType<*>> {

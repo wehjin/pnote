@@ -19,18 +19,17 @@ fun <T : Any> PlainItem<*>.asValue(valueClass: Class<T>): T = valueClass.cast(as
 
 sealed class ItemType<T : Any> {
 
-    abstract fun asValue(bytes: ByteArray): T
     abstract val valueClass: Class<T>
+    abstract fun asValue(bytes: ByteArray): T
+    abstract fun asByteArray(value: T): ByteArray
 
     // TODO: Make this a buffer
     object Text : ItemType<String>() {
-        override fun asValue(bytes: ByteArray): String = bytes.toString(Charsets.UTF_8)
         override val valueClass: Class<String> = String::class.java
+        override fun asValue(bytes: ByteArray): String = bytes.toString(Charsets.UTF_8)
+        override fun asByteArray(value: String): ByteArray = value.toByteArray(Charsets.UTF_8)
     }
 }
 
-fun plainItem(value: String): PlainItem<String> =
-    PlainItem(
-        ItemType.Text,
-        value.toByteArray()
-    )
+fun plainItem(value: String): PlainItem<String> = plainItem(value, ItemType.Text)
+fun <T : Any> plainItem(value: T, itemType: ItemType<T>) = PlainItem(itemType, itemType.asByteArray(value))

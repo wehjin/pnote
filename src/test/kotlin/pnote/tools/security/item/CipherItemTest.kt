@@ -26,7 +26,7 @@ internal class CipherItemTest {
         val text = "Hello world!"
         val plainItem = plainItem(text)
         val cipherItem = cipherItem(dir, password, plainItem)
-        val afterText = cipherItem.visit(password, ItemType.Text) { plainValue }
+        val afterText = cipherItem.map(password, ItemType.Text) { plainValue }
         assertEquals(text, afterText)
     }
 
@@ -39,7 +39,7 @@ internal class CipherItemTest {
             plainItem("Hello world!")
         )
         assertThrows<IllegalStateException> {
-            cipherItem.visit("bad".toCharArray(), ItemType.Text) { plainValue }
+            cipherItem.map("bad".toCharArray(), ItemType.Text) { plainValue }
         }
     }
 }
