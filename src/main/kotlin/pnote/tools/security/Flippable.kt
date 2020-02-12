@@ -6,6 +6,7 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
+import kotlin.random.Random
 
 interface Flippable {
     val cipherType: CipherType
@@ -46,6 +47,6 @@ private fun deriveSecret(password: CharArray, salt: ByteArray, cipherType: Ciphe
 private class DerivedSecret(val key: ByteArray) : Closeable {
 
     override fun close() {
-        for (i in key.indices) key[i] = 0
+        Random.nextBytes(key)
     }
 }
