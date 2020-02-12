@@ -1,4 +1,4 @@
-package pnote.tools.security
+package pnote.tools.security.item
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -33,7 +33,11 @@ internal class CipherItemTest {
     @Test
     internal fun `visiting a cipher-item with an incorrect password throws an exception`() {
         val dir = createTempDir()
-        val cipherItem = cipherItem(dir, "good".toCharArray(), plainItem("Hello world!"))
+        val cipherItem = cipherItem(
+            dir,
+            "good".toCharArray(),
+            plainItem("Hello world!")
+        )
         assertThrows<IllegalStateException> {
             cipherItem.visit("bad".toCharArray(), ItemType.Text) { plainValue }
         }

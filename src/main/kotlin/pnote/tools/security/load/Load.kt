@@ -1,17 +1,35 @@
-package pnote.tools.security
+package pnote.tools.security.load
 
 import kotlin.random.Random
 
 fun cipherLoad(password: CharArray, plainLoad: PlainLoad): CipherLoad {
     val flippable = plainLoad.asFlippable()
-    val cipherBytes = flip(flippable, FlipDirection.Encrypt, password)
-    return CipherLoad(cipherBytes, plainLoad.cipherType, plainLoad.salt, plainLoad.iv)
+    val cipherBytes = flip(
+        flippable,
+        FlipDirection.Encrypt,
+        password
+    )
+    return CipherLoad(
+        cipherBytes,
+        plainLoad.cipherType,
+        plainLoad.salt,
+        plainLoad.iv
+    )
 }
 
 fun plainLoad(password: CharArray, cipherLoad: CipherLoad): PlainLoad? = try {
     val flippable = cipherLoad.asFlippable()
-    val plainBytes = flip(flippable, FlipDirection.Decrypt, password)
-    PlainLoad(plainBytes, cipherLoad.cipherType, cipherLoad.salt, cipherLoad.iv)
+    val plainBytes = flip(
+        flippable,
+        FlipDirection.Decrypt,
+        password
+    )
+    PlainLoad(
+        plainBytes,
+        cipherLoad.cipherType,
+        cipherLoad.salt,
+        cipherLoad.iv
+    )
 } catch (e: Throwable) {
     null
 }

@@ -1,4 +1,4 @@
-package pnote.tools.security
+package pnote.tools.security.item
 
 import java.io.Closeable
 import kotlin.math.absoluteValue
@@ -9,17 +9,13 @@ class PlainItem<T : Any>(
     val bytes: ByteArray,
     val id: String = Random.nextLong().absoluteValue.toString(16)
 ) : Closeable {
-
     fun asValue(): T = type.asValue(bytes)
-
-
     override fun close() {
         Random.nextBytes(bytes)
     }
 }
 
 fun <T : Any> PlainItem<*>.asValue(valueClass: Class<T>): T = valueClass.cast(asValue())
-
 
 sealed class ItemType<T : Any> {
 
@@ -33,4 +29,8 @@ sealed class ItemType<T : Any> {
     }
 }
 
-fun plainItem(value: String): PlainItem<String> = PlainItem(ItemType.Text, value.toByteArray())
+fun plainItem(value: String): PlainItem<String> =
+    PlainItem(
+        ItemType.Text,
+        value.toByteArray()
+    )

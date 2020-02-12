@@ -1,6 +1,7 @@
-package pnote.tools.security
+package pnote.tools.security.item
 
 import com.beust.klaxon.Klaxon
+import pnote.tools.security.load.*
 import java.io.File
 import java.util.*
 
@@ -8,7 +9,11 @@ class CipherItem(private val file: File) {
 
     val id: String by lazy { file.nameWithoutExtension }
 
-    private val cipherLoadItemType: Pair<CipherLoad, ItemType<*>> by lazy { decode(file) }
+    private val cipherLoadItemType: Pair<CipherLoad, ItemType<*>> by lazy {
+        decode(
+            file
+        )
+    }
     private val cipherLoad: CipherLoad get() = cipherLoadItemType.first
 
     fun <T : Any, R> visit(
@@ -18,13 +23,14 @@ class CipherItem(private val file: File) {
     ): R {
         require(itemType == cipherLoadItemType.second)
         val plainLoad = plainLoad(password, cipherLoad) ?: error("Invalid password or item file")
-        return PlainItem(itemType, plainLoad.plainBytes, id).use { plainItem ->
-            val scope = object : ItemVisitScope<T> {
-                override val plainBytes get() = plainItem.bytes
-                override val plainValue: T get() = plainItem.asValue(itemType.valueClass)
+        return PlainItem(itemType, plainLoad.plainBytes, id)
+            .use { plainItem ->
+                val scope = object : ItemVisitScope<T> {
+                    override val plainBytes get() = plainItem.bytes
+                    override val plainValue: T get() = plainItem.asValue(itemType.valueClass)
+                }
+                scope.block()
             }
-            scope.block()
-        }
     }
 }
 
@@ -34,14 +40,24 @@ interface ItemVisitScope<T : Any> {
 }
 
 fun <T : Any> cipherItem(hostDir: File, password: CharArray, plainItem: PlainItem<T>): CipherItem {
-    val cipherLoad = cipherLoad(password, PlainLoad(plainItem.bytes, CipherType.Main))
+    val cipherLoad = cipherLoad(
+        password,
+        PlainLoad(plainItem.bytes, CipherType.Main)
+    )
     return CipherItem(
-        file = File(hostDir, plainItem.id).apply { writeText(encode(cipherLoad, plainItem.type)) }
+        file = File(hostDir, plainItem.id).apply {
+            writeText(
+                encode(
+                    cipherLoad,
+                    plainItem.type
+                )
+            )
+        }
     )
 }
 
 fun decode(file: File): Pair<CipherLoad, ItemType<*>> {
-    val jsonObject = Klaxon().parseJsonObject(file.bufferedReader()) ?: error("invalid file $file")
+    val jsonObject = Klaxon().parseJsonObject(file.bufferedReader())
     val itemType = decodeItemType(jsonObject.string("itemType"))
     val cipherLoad = CipherLoad(
         cipherBytes = decodeByteArray(jsonObject.string("cipherBytes")),

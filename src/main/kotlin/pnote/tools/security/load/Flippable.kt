@@ -1,4 +1,4 @@
-package pnote.tools.security
+package pnote.tools.security.load
 
 import java.io.Closeable
 import javax.crypto.Cipher
@@ -38,7 +38,8 @@ fun flip(flippable: Flippable, direction: FlipDirection, password: CharArray): B
 
 private fun deriveSecret(password: CharArray, salt: ByteArray, cipherType: CipherType): DerivedSecret {
     cipherType as CipherType.Main
-    val key = PBEKeySpec(password, salt, CipherType.Main.kdfRounds, CipherType.Main.sfKeyBytes * 8)
+    val key = PBEKeySpec(password, salt,
+        CipherType.Main.kdfRounds, CipherType.Main.sfKeyBytes * 8)
         .let { SecretKeyFactory.getInstance(CipherType.Main.kdfLabel).generateSecret(it).encoded }
         .also { check(it.size == CipherType.Main.sfKeyBytes) }
     return DerivedSecret(key)
