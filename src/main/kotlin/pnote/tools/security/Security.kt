@@ -1,6 +1,5 @@
 package pnote.tools.security
 
-import java.security.InvalidParameterException
 import kotlin.random.Random
 
 fun cipherLoad(password: CharArray, plainLoad: PlainLoad): CipherLoad {
@@ -9,14 +8,12 @@ fun cipherLoad(password: CharArray, plainLoad: PlainLoad): CipherLoad {
     return CipherLoad(cipherBytes, plainLoad.cipherType, plainLoad.salt, plainLoad.iv)
 }
 
-fun plainLoad(password: CharArray, cipherLoad: CipherLoad): PlainLoad {
-    try {
-        val flippable = cipherLoad.asFlippable()
-        val plainBytes = flip(flippable, FlipDirection.Decrypt, password)
-        return PlainLoad(plainBytes, cipherLoad.cipherType, cipherLoad.salt, cipherLoad.iv)
-    } catch (e: Throwable) {
-        throw InvalidParameterException("Invalid password")
-    }
+fun plainLoad(password: CharArray, cipherLoad: CipherLoad): PlainLoad? = try {
+    val flippable = cipherLoad.asFlippable()
+    val plainBytes = flip(flippable, FlipDirection.Decrypt, password)
+    PlainLoad(plainBytes, cipherLoad.cipherType, cipherLoad.salt, cipherLoad.iv)
+} catch (e: Throwable) {
+    null
 }
 
 private fun PlainLoad.asFlippable(): Flippable {

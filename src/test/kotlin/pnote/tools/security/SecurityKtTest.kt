@@ -1,10 +1,9 @@
 package pnote.tools.security
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.nio.charset.Charset
-import java.security.InvalidParameterException
 
 internal class SecurityKtTest {
     @Test
@@ -14,7 +13,7 @@ internal class SecurityKtTest {
         val plainLoad1 = PlainLoad(plainText1.toByteArray(Charset.defaultCharset()), CipherType.Main)
         val cipherLoad = cipherLoad(password, plainLoad1)
         val plainLoad2 = plainLoad(password, cipherLoad)
-        val plainText2 = plainLoad2.plainBytes.toString(Charset.defaultCharset())
+        val plainText2 = plainLoad2!!.plainBytes.toString(Charset.defaultCharset())
         assertEquals(plainLoad1.cipherType, plainLoad2.cipherType)
         assertEquals(plainLoad1.salt, plainLoad2.salt)
         assertEquals(plainLoad1.iv, plainLoad2.iv)
@@ -24,9 +23,10 @@ internal class SecurityKtTest {
     @Test
     internal fun `different password produces exception from cipher text`() {
         val password1 = "1234".toCharArray()
-        val plainLoad = PlainLoad("Hello".toByteArray(Charset.defaultCharset()), CipherType.Main)
-        val cipherLoad = cipherLoad(password1, plainLoad)
+        val plainLoad1 = PlainLoad("Hello".toByteArray(Charset.defaultCharset()), CipherType.Main)
+        val cipherLoad = cipherLoad(password1, plainLoad1)
         val password2 = "2234".toCharArray()
-        assertThrows<InvalidParameterException> { plainLoad(password2, cipherLoad) }
+        val plainLoad2 = plainLoad(password2, cipherLoad)
+        assertNull(plainLoad2)
     }
 }
