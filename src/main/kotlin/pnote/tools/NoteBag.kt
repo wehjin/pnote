@@ -8,7 +8,8 @@ interface NoteBag {
 data class ReadBannersResult(val accessLevel: AccessLevel, val banners: Set<Banner>)
 
 sealed class Banner {
-    abstract val itemId: Long
+    abstract val noteId: Long
 
-    data class Basic(override val itemId: Long, val title: String) : Banner()
+    data class Basic(override val noteId: Long, val title: String) : Banner()
 }
+
