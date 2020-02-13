@@ -17,7 +17,7 @@ val PRIMARY = ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x62, 
 class LanternaProjector {
     fun start() {
 
-        val sideBox = labelBox("Hello", PRIMARY.glyphColor).before(colorBox(PRIMARY.color))
+        val sideBox = labelBox("Hello", PRIMARY.glyphColor, 0f).pad(2).before(colorBox(PRIMARY.color))
         val contentBox = labelBox("Import Password", SURFACE.glyphColor).before(colorBox(SURFACE.color))
         val box = contentBox.packRight(30, sideBox)
 

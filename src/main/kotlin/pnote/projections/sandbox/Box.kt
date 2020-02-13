@@ -3,9 +3,9 @@ package pnote.projections.sandbox
 import com.googlecode.lanterna.TextColor
 
 
-fun labelBox(label: String, color: TextColor): Box {
+fun labelBox(label: String, color: TextColor, snapX: Float = 0.5f): Box {
     return box("LabelBox") {
-        val labelBounds = edge.bounds.clipCenter(label.length, 1)
+        val labelBounds = edge.bounds.clipCenter(label.length, 1, snapX)
         if (labelBounds.hits(col, row, glyphMinZ)) {
             setGlyph(label[labelBounds.leftInset(col)], color, labelBounds.z)
         }
@@ -23,6 +23,13 @@ fun box(name: String, render: SpotScope.() -> Unit): Box =
         override val name: String = name
         override fun render(spotScope: SpotScope) = spotScope.render()
     }
+
+fun Box.pad(size: Int): Box {
+    return box(this.name) {
+        val padBounds = edge.bounds.inset(size)
+        this@pad.render(withEdgeBounds(padBounds))
+    }
+}
 
 fun Box.packRight(width: Int, box: Box): Box {
     return box("${this.name}|${box.name}") {

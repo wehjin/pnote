@@ -30,6 +30,9 @@ data class BoxBounds(
     fun shiftZ(delta: Int): BoxBounds =
         copy(z = z + delta)
 
+    fun inset(delta: Int): BoxBounds =
+        copy(left = left + delta, right = right - delta, top = top + delta, bottom = bottom - delta)
+
     fun partitionRight(columns: Int): Pair<BoxBounds, BoxBounds> {
         val middle = right - columns
         val leftBounds = BoxBounds(middle, bottom, left, top)
@@ -37,10 +40,10 @@ data class BoxBounds(
         return Pair(leftBounds, rightBounds)
     }
 
-    fun clipCenter(width: Int, height: Int): BoxBounds {
+    fun clipCenter(width: Int, height: Int, snapX: Float): BoxBounds {
         val extraWidth = this.width - width
         val extraHeight = this.height - height
-        val nextLeft = this.left + extraWidth / 2
+        val nextLeft = this.left + (extraWidth * snapX).toInt()
         val nextRight = nextLeft + width
         val nextTop = this.top + extraHeight / 2
         val nextBottom = nextTop + height
