@@ -7,8 +7,8 @@ data class BoxBounds(
     var top: Int = 0,
     var z: Int = 0
 ) {
-    private val width: Int get() = right - left
-    private val height: Int get() = bottom - top
+    val width: Int get() = right - left
+    val height: Int get() = bottom - top
 
     fun contains(col: Int, row: Int): Boolean =
         col >= left && row >= top && col < right && row < bottom
@@ -35,12 +35,21 @@ data class BoxBounds(
 
     fun partitionRight(columns: Int): Pair<BoxBounds, BoxBounds> {
         val middle = right - columns
+        return partitionMiddle(middle)
+    }
+
+    fun partitionLeft(columns: Int): Pair<BoxBounds, BoxBounds> {
+        val middle = left + columns
+        return partitionMiddle(middle)
+    }
+
+    private fun partitionMiddle(middle: Int): Pair<BoxBounds, BoxBounds> {
         val leftBounds = BoxBounds(middle, bottom, left, top)
         val rightBounds = BoxBounds(right, bottom, middle, top)
         return Pair(leftBounds, rightBounds)
     }
 
-    fun clipCenter(width: Int, height: Int, snapX: Float): BoxBounds {
+    fun confine(width: Int, height: Int, snapX: Float): BoxBounds {
         val extraWidth = this.width - width
         val extraHeight = this.height - height
         val nextLeft = this.left + (extraWidth * snapX).toInt()

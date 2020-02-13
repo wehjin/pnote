@@ -9,16 +9,19 @@ fun main(args: Array<String>) {
     LanternaProjector().start()
 }
 
-data class ColorSwatch(val glyphColor: TextColor, val color: TextColor)
+class LanternaProjector : BoxContext {
 
-val SURFACE = ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
-val PRIMARY = ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x62, 0x00, 0xEE))
+    override val primarySwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x62, 0x00, 0xEE))
+    override val primaryLightSwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xBB, 0x86, 0xFC))
+    override val surfaceSwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
 
-class LanternaProjector {
     fun start() {
 
-        val sideBox = labelBox("Hello", PRIMARY.glyphColor, 0f).pad(2).before(colorBox(PRIMARY.color))
-        val contentBox = labelBox("Import Password", SURFACE.glyphColor).before(colorBox(SURFACE.color))
+        val sideBox = inputBox().maxHeight(1).pad(2).before(colorBox(primarySwatch.color))
+        val contentBox = labelBox("Import Password", surfaceSwatch.glyphColor).before(colorBox(surfaceSwatch.color))
         val box = contentBox.packRight(30, sideBox)
 
         val terminal = DefaultTerminalFactory().createTerminal()
