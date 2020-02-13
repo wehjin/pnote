@@ -7,6 +7,7 @@ import pnote.stories.ImportConfidentialAction.Cancel
 import pnote.stories.ImportConfidentialAction.SetPassword
 import pnote.stories.ImportPasswordVision.FinishedGetPassword
 import pnote.stories.ImportPasswordVision.GetPassword
+import pnote.tools.Password
 
 
 sealed class ImportPasswordVision {
@@ -43,7 +44,7 @@ fun AppScope.importPassword() = matchingStory<ImportPasswordVision>(
             when {
                 password.isEmpty() -> GetPassword(offer, password, check, PasswordEntryError.InvalidPassword)
                 check != password -> GetPassword(offer, password, check, PasswordEntryError.MismatchedPasswords)
-                else -> cryptor.importConfidential(password).let { FinishedGetPassword }
+                else -> cryptor.importConfidential(Password(password.toCharArray())).let { FinishedGetPassword }
             }
         }
     }

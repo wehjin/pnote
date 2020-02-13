@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes.*
 import pnote.tools.*
+import pnote.tools.AccessLevel.*
 import story.core.scan
 
 internal class BrowseNotesKtTest {
@@ -18,9 +19,9 @@ internal class BrowseNotesKtTest {
 
         override val noteBag: NoteBag = object : NoteBag {
             override fun readBanners(): ReadBannersResult = when (val accessLevel = cryptor.accessLevel) {
-                AccessLevel.Empty -> ReadBannersResult(accessLevel, emptySet())
-                AccessLevel.ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
-                AccessLevel.ConfidentialUnlocked -> ReadBannersResult(accessLevel, bannerSet)
+                Empty -> ReadBannersResult(accessLevel, emptySet())
+                ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
+                is ConfidentialUnlocked -> ReadBannersResult(accessLevel, bannerSet)
             }
         }
     }
@@ -39,7 +40,7 @@ internal class BrowseNotesKtTest {
 
     @Test
     internal fun `locked cryptor starts story with unlocking`() {
-        appScope.cryptor = memCryptor("1234")
+        appScope.cryptor = memCryptor(password("1234"))
         val story = appScope.browseNotes()
         runBlocking {
             val unlocking = story.scan(500) { it as? Unlocking }
@@ -51,7 +52,7 @@ internal class BrowseNotesKtTest {
 
     @Test
     internal fun `unlocked cryptor starts story with browsing`() {
-        appScope.cryptor = memCryptor("1234", "1234")
+        appScope.cryptor = memCryptor(password("1234"), password("1234"))
         val story = appScope.browseNotes()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }

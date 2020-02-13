@@ -8,7 +8,8 @@ import pnote.stories.UnlockConfidential.Finished
 import pnote.stories.UnlockConfidential.Unlocking
 import pnote.stories.UnlockConfidentialAction.Cancel
 import pnote.stories.UnlockConfidentialAction.SetPassword
-import pnote.tools.AccessLevel
+import pnote.tools.AccessLevel.ConfidentialUnlocked
+import pnote.tools.Password
 
 fun AppScope.unlockConfidential() = matchingStory<UnlockConfidential>(
     name = "UnlockCurrentLevel",
@@ -19,9 +20,9 @@ fun AppScope.unlockConfidential() = matchingStory<UnlockConfidential>(
         Finished(true)
     }
     on<SetPassword, UnlockConfidential, Unlocking> {
-        cryptor.unlockConfidential(action.passwordLine)
+        cryptor.unlockConfidential(Password(action.passwordLine.toCharArray()))
         val newAccessLevel = cryptor.accessLevel
-        if (newAccessLevel == AccessLevel.ConfidentialUnlocked) {
+        if (newAccessLevel is ConfidentialUnlocked) {
             Finished(false)
         } else {
             Unlocking(offer, action.passwordLine)

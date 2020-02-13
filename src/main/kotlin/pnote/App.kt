@@ -22,7 +22,7 @@ class App(private val commandName: String) : AppScope {
         override fun readBanners(): ReadBannersResult = when (val accessLevel = cryptor.accessLevel) {
             Empty -> ReadBannersResult(accessLevel, emptySet())
             ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
-            ConfidentialUnlocked -> ReadBannersResult(accessLevel, setOf(Banner.Basic(1, "Sample")))
+            is ConfidentialUnlocked -> ReadBannersResult(accessLevel, setOf(Banner.Basic(1, "Sample")))
         }
     }
 

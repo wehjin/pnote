@@ -9,7 +9,7 @@ import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes.*
 import pnote.stories.BrowseNotesAction.Cancel
 import pnote.stories.BrowseNotesAction.Reload
-import pnote.tools.AccessLevel
+import pnote.tools.AccessLevel.*
 import pnote.tools.Banner
 
 fun AppScope.browseNotes(): Story<BrowseNotes> = matchingStory(
@@ -29,12 +29,12 @@ fun AppScope.browseNotes(): Story<BrowseNotes> = matchingStory(
 private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNotes =
     noteBag.readBanners().let { (accessLevel, banners) ->
         when (accessLevel) {
-            AccessLevel.Empty -> Importing(
+            Empty -> Importing(
                 storyInitScope.offer,
                 importPassword()
                     .also { storyInitScope.offerWhenStoryEnds(it) { Reload } }
             )
-            AccessLevel.ConfidentialLocked -> Unlocking(
+            ConfidentialLocked -> Unlocking(
                 storyInitScope.offer,
                 unlockConfidential()
                     .also {
@@ -44,7 +44,7 @@ private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNo
                         }
                     }
             )
-            AccessLevel.ConfidentialUnlocked -> Browsing(storyInitScope.offer, banners)
+            is ConfidentialUnlocked -> Browsing(storyInitScope.offer, banners)
         }
     }
 

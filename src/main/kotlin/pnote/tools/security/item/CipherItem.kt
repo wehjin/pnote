@@ -24,6 +24,7 @@ class CipherItem(
         return PlainItem(itemType, plainLoad.plainBytes, id)
             .use { plainItem ->
                 val scope = object : ItemVisitScope<T> {
+                    override val itemId: String = id
                     override val plainBytes get() = plainItem.bytes
                     override val plainValue: T get() = plainItem.asValue(itemType.valueClass)
                 }
@@ -37,6 +38,7 @@ class CipherItem(
 }
 
 interface ItemVisitScope<T : Any> {
+    val itemId: String
     val plainBytes: ByteArray
     val plainValue: T
 }
