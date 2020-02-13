@@ -12,7 +12,8 @@ fun main(args: Array<String>) {
 class LanternaProjector {
     fun start() {
 
-        val box = labelBox("Hello")
+        val sideBox = labelBox("World!", TextColor.ANSI.BLACK).before(colorBox(TextColor.ANSI.MAGENTA))
+        val box = labelBox("Hello", TextColor.ANSI.WHITE).packRight(20, sideBox)
 
         val terminal = DefaultTerminalFactory().createTerminal()
         val screen = TerminalScreen(terminal).apply { startScreen() }
@@ -25,7 +26,7 @@ class LanternaProjector {
             widthRange.forEach { col ->
                 heightRange.forEach { row ->
                     val rendition = Rendition()
-                    box.render(col, row, -1, rendition)
+                    box.updateRendition(col, row, rendition)
                     if (rendition.isWritten) {
                         val oldCharacter = getFrontCharacter(col, row)
                         val nextGlyph = rendition.glyph ?: oldCharacter.character
@@ -41,67 +42,78 @@ class LanternaProjector {
     }
 }
 
-fun labelBox(label: String): LabelBox =
-    object : LabelBox {
-        private val range: BoxBounds = BoxBounds()
-        private var z: Int = 0
+fun labelBox(label: String, color: TextColor): Box = object : Box {
 
-        override fun onEdgeBounds(value: BoxBounds) {
-            val labelWidth = label.length
-            val extraWidth = value.width - labelWidth
-            range.left = value.left + extraWidth / 2
-            range.right = range.left + labelWidth
-            val extraHeight = value.height - 1
-            range.top = value.top + extraHeight / 2
-            range.bottom = range.top + 1
-        }
+    override fun onEdgeBounds(value: BoxBounds) {
+        val labelWidth = label.length
+        val extraWidth = value.width - labelWidth
+        bounds.left = value.left + extraWidth / 2
+        bounds.right = bounds.left + labelWidth
+        val extraHeight = value.height - 1
+        bounds.top = value.top + extraHeight / 2
+        bounds.bottom = bounds.top + 1
+        bounds.z = value.z
+    }
 
-        override fun render(col: Int, row: Int, maxZ: Int, rendition: Rendition) {
-            if (range.contains(col, row)) {
-                rendition.update(label[col - range.left], TextColor.ANSI.WHITE, null, z)
-            }
+    override fun updateRendition(col: Int, row: Int, rendition: Rendition) {
+        if (bounds.contains(col, row)) {
+            rendition.update(label[col - bounds.left], color, null, bounds.z)
         }
     }
 
-data class Rendition(
-    var glyph: Char? = null,
-    var foreColor: TextColor? = null,
-    var backColor: TextColor? = null,
-    var maxZ: Int = 1000
-) {
-    val isWritten: Boolean
-        get() = glyph != null || foreColor != null || backColor != null
-
-    fun update(glyph: Char?, foreColor: TextColor?, backColor: TextColor?, z: Int) {
-        if (z <= maxZ) {
-            glyph?.let { this.glyph = it }
-            foreColor?.let { this.foreColor = it }
-            backColor?.let { this.backColor = it }
-            maxZ = z
-        }
-    }
+    private val bounds: BoxBounds = BoxBounds()
 }
 
-interface LabelBox : Box {
+fun colorBox(color: TextColor): Box = object : Box {
 
+    override fun onEdgeBounds(value: BoxBounds) = bounds.set(value)
+
+    override fun updateRendition(col: Int, row: Int, rendition: Rendition) {
+        if (bounds.contains(col, row)) {
+            rendition.update(null, null, color, bounds.z)
+        }
+    }
+
+    private val bounds = BoxBounds()
 }
 
 interface Box {
     fun onEdgeBounds(value: BoxBounds)
-    fun render(col: Int, row: Int, maxZ: Int, rendition: Rendition)
+    fun updateRendition(col: Int, row: Int, rendition: Rendition)
 }
 
-data class BoxBounds(
-    var right: Int = 0,
-    var bottom: Int = 0,
-    var left: Int = 0,
-    var top: Int = 0
-) {
-    val width: Int get() = right - left
-    val height: Int get() = bottom - top
+fun Box.before(box: Box): Box {
+    return object : Box {
+        override fun onEdgeBounds(value: BoxBounds) {
+            val aftBounds = BoxBounds().apply {
+                set(value)
+                z = value.z + 1
+            }
+            box.onEdgeBounds(aftBounds)
+            this@before.onEdgeBounds(value)
+        }
 
-    fun contains(col: Int, row: Int): Boolean {
-        return col >= left && row >= top && col < right && row < bottom
+        override fun updateRendition(col: Int, row: Int, rendition: Rendition) {
+            box.updateRendition(col, row, rendition)
+            this@before.updateRendition(col, row, rendition)
+        }
+    }
+}
+
+fun Box.packRight(size: Int, box: Box): Box {
+    return object : Box {
+        override fun onEdgeBounds(value: BoxBounds) {
+            val (left, right) = value.partitionRight(size)
+            leftBox.onEdgeBounds(left)
+            box.onEdgeBounds(right)
+        }
+
+        override fun updateRendition(col: Int, row: Int, rendition: Rendition) {
+            leftBox.updateRendition(col, row, rendition)
+            box.updateRendition(col, row, rendition)
+        }
+
+        private val leftBox = this@packRight
     }
 }
 
