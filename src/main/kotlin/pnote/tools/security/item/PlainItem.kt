@@ -7,13 +7,15 @@ import kotlin.random.Random
 class PlainItem<T : Any>(
     val type: ItemType<T>,
     val bytes: ByteArray,
-    val id: String = Random.nextLong().absoluteValue.toString(16)
+    val id: String = randomId()
 ) : Closeable {
     fun asValue(): T = type.asValue(bytes)
     override fun close() {
         Random.nextBytes(bytes)
     }
 }
+
+fun randomId() = Random.nextLong().absoluteValue.toString(16)
 
 fun <T : Any> PlainItem<*>.asValue(valueClass: Class<T>): T = valueClass.cast(asValue())
 
@@ -32,4 +34,8 @@ sealed class ItemType<T : Any> {
 }
 
 fun plainItem(value: String): PlainItem<String> = plainItem(value, ItemType.Text)
-fun <T : Any> plainItem(value: T, itemType: ItemType<T>) = PlainItem(itemType, itemType.asByteArray(value))
+fun <T : Any> plainItem(
+    value: T,
+    itemType: ItemType<T>,
+    id: String? = null
+) = PlainItem(itemType, itemType.asByteArray(value), id ?: randomId())

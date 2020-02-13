@@ -7,25 +7,18 @@ import kotlinx.coroutines.runBlocking
 import pnote.projections.projectBrowseNotes
 import pnote.scopes.AppScope
 import pnote.stories.browseNotes
-import pnote.tools.*
-import pnote.tools.AccessLevel.*
+import pnote.tools.Cryptor
+import pnote.tools.FileNoteBag
+import pnote.tools.NoteBag
+import pnote.tools.fileCryptor
 import java.io.File
 
 class App(private val commandName: String) : AppScope {
     private val homeDir = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
     private val appDir = homeDir.let { home -> File(home, ".$commandName").apply { mkdirs() } }
     private val userDir = appDir.let { app -> File(app, "main").apply { mkdirs() } }
-
     override val cryptor: Cryptor = fileCryptor(userDir)
-
-    override val noteBag: NoteBag = object : NoteBag {
-        override fun readBanners(): ReadBannersResult = when (val accessLevel = cryptor.accessLevel) {
-            Empty -> ReadBannersResult(accessLevel, emptySet())
-            ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
-            is ConfidentialUnlocked -> ReadBannersResult(accessLevel, setOf(Banner.Basic(1, "Sample")))
-        }
-    }
-
+    override val noteBag: NoteBag = FileNoteBag(userDir, cryptor)
     override val logTag: String = commandName
 }
 
