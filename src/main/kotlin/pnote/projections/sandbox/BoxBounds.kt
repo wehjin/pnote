@@ -13,6 +13,9 @@ data class BoxBounds(
     fun contains(col: Int, row: Int): Boolean =
         col >= left && row >= top && col < right && row < bottom
 
+    fun isTopLeftCorner(col: Int, row: Int): Boolean =
+        col == left && row == top
+
     fun hits(col: Int, row: Int, minZ: Int): Boolean =
         this.contains(col, row) && this.z <= minZ
 
