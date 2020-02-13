@@ -14,12 +14,12 @@ interface BoxContext {
 
 fun BoxContext.inputBox(): Box {
     var content = "***"
-    val readerId = Random.nextLong().absoluteValue
+    val focusableId = Random.nextLong().absoluteValue
     return box(
         name = "InputBox",
         focus = {
-            setFocusable(Focusable(readerId, edge.bounds, object : KeyReader {
-                override val readerId: Long = readerId
+            setFocusable(Focusable(focusableId, edge.bounds, object : KeyReader {
+                override val readerId: Long = focusableId
                 override fun receiveKey(keyStroke: KeyStroke) {
                     println("Received key $keyStroke in inputBox")
                     when (keyStroke.keyType) {
@@ -55,7 +55,7 @@ fun BoxContext.inputBox(): Box {
                     setGlyph(' ', primaryLightSwatch.glyphColor, edge.bounds.z)
                 }
                 val cursorInset = displayContent.length
-                if (edge.bounds.isTopLeftCorner(col - cursorInset, row)) {
+                if (edge.bounds.isTopLeftCorner(col - cursorInset, row) && activeFocusId == focusableId) {
                     setCursor(col, row)
                 }
             }

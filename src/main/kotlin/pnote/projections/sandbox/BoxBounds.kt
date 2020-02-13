@@ -36,17 +36,28 @@ data class BoxBounds(
     fun inset(delta: Int): BoxBounds =
         copy(left = left + delta, right = right - delta, top = top + delta, bottom = bottom - delta)
 
+    fun partitionBottom(height: Int): Pair<BoxBounds, BoxBounds> {
+        val middle = bottom - height
+        return partitionHeight(middle)
+    }
+
+    private fun partitionHeight(middle: Int): Pair<BoxBounds, BoxBounds> {
+        val topBounds = BoxBounds(right, middle, left, top)
+        val bottomBounds = BoxBounds(right, bottom, left, middle)
+        return Pair(topBounds, bottomBounds)
+    }
+
     fun partitionRight(columns: Int): Pair<BoxBounds, BoxBounds> {
         val middle = right - columns
-        return partitionMiddle(middle)
+        return partitionWidth(middle)
     }
 
     fun partitionLeft(columns: Int): Pair<BoxBounds, BoxBounds> {
         val middle = left + columns
-        return partitionMiddle(middle)
+        return partitionWidth(middle)
     }
 
-    private fun partitionMiddle(middle: Int): Pair<BoxBounds, BoxBounds> {
+    private fun partitionWidth(middle: Int): Pair<BoxBounds, BoxBounds> {
         val leftBounds = BoxBounds(middle, bottom, left, top)
         val rightBounds = BoxBounds(right, bottom, middle, top)
         return Pair(leftBounds, rightBounds)

@@ -29,43 +29,37 @@ class LanternaProjector : BoxContext {
         data class KeyPress(val keyStroke: KeyStroke) : RenderAction()
     }
 
-    class ActiveFocus {
-        var focusId: Long? = null
-        val focusables = mutableMapOf<Long, Focusable>()
-
-        val keyReader: KeyReader?
-            get() = focusId?.let { focusables[it]?.keyReader }
-
-        fun selectFocus() {
-            val nextFocusId = focusId?.let { focusables[it]?.focusableId } ?: focusables.keys.firstOrNull()
-            focusId = nextFocusId
-        }
-    }
-
     fun start() {
 
-        val sideBox = inputBox().maxHeight(1).pad(2).before(colorBox(primarySwatch.color))
+        val cluster = inputBox()
+            .packBottom(1, colorBox(primarySwatch.color))
+            .packBottom(1, inputBox())
+            .packBottom(1, colorBox(primarySwatch.color))
+            .packBottom(1, inputBox())
+            .maxHeight(5)
+        val sideBox = cluster.pad(2).before(colorBox(primarySwatch.color))
+
         val contentBox = labelBox("Import Password", surfaceSwatch.glyphColor).before(colorBox(surfaceSwatch.color))
         val box = contentBox.packRight(30, sideBox)
 
         val terminal = DefaultTerminalFactory().createTerminal()
         val screen = TerminalScreen(terminal).apply { startScreen() }
-        val channel = Channel<RenderAction>(10).apply { offer(RenderAction.Refresh) }
+        val renderChannel = Channel<RenderAction>(10).apply { offer(RenderAction.Refresh) }
         GlobalScope.launch {
             while (true) {
                 val keyStroke = withContext(Dispatchers.IO) { screen.readInput() }
                 when (keyStroke.keyType) {
                     KeyType.Unknown -> Unit
-                    else -> channel.send(RenderAction.KeyPress(keyStroke))
+                    else -> renderChannel.send(RenderAction.KeyPress(keyStroke))
                 }
             }
         }
         runBlocking {
-            val activeFocus = ActiveFocus()
-            for (action in channel) {
+            val activeFocus = ActiveFocus(renderChannel)
+            for (action in renderChannel) {
                 when (action) {
-                    RenderAction.Refresh -> screen.renderBox(box, activeFocus, channel)
-                    is RenderAction.KeyPress -> activeFocus.keyReader?.receiveKey(action.keyStroke)
+                    RenderAction.Refresh -> screen.renderBox(box, activeFocus, renderChannel)
+                    is RenderAction.KeyPress -> activeFocus.routeKey(action.keyStroke)
                 }
             }
         }

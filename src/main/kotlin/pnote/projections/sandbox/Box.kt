@@ -30,6 +30,21 @@ fun Box.packLeft(width: Int, box: Box): Box {
         })
 }
 
+fun Box.packBottom(height: Int, box: Box): Box {
+    return box("${this.name}/${box.name}",
+        focus = {
+            val (topBounds, bottomBounds) = edge.bounds.partitionBottom(height)
+            this@packBottom.focus(withEdgeBounds(topBounds))
+            box.focus(withEdgeBounds(bottomBounds))
+        },
+        render = {
+            val (topBounds, bottomBounds) = edge.bounds.partitionBottom(height)
+            this@packBottom.render(withEdgeBounds(topBounds))
+            box.render(withEdgeBounds(bottomBounds))
+        })
+}
+
+
 fun Box.before(box: Box): Box {
     // TODO: Clean up duplication with a multi-box mapEdge
     return box("${this.name}\\${box.name}",
