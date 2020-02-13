@@ -1,52 +1,76 @@
 package pnote.projections.sandbox
 
 
-fun Box.pad(size: Int): Box {
-    return box(this.name) {
-        val padBounds = edge.bounds.inset(size)
-        this@pad.render(withEdgeBounds(padBounds))
-    }
-}
-
 fun Box.packRight(width: Int, box: Box): Box {
-    return box("${this.name}|${box.name}") {
-        val (leftBounds, rightBounds) = edge.bounds.partitionRight(width)
-        this@packRight.render(withEdgeBounds(leftBounds))
-        box.render(withEdgeBounds(rightBounds))
-    }
+    return box("${this.name}|${box.name}",
+        focus = {
+            val (leftBounds, rightBounds) = edge.bounds.partitionRight(width)
+            this@packRight.focus(withEdgeBounds(leftBounds))
+            box.focus(withEdgeBounds(rightBounds))
+        },
+        render = {
+            val (leftBounds, rightBounds) = edge.bounds.partitionRight(width)
+            this@packRight.render(withEdgeBounds(leftBounds))
+            box.render(withEdgeBounds(rightBounds))
+        }
+    )
 }
 
 fun Box.packLeft(width: Int, box: Box): Box {
-    return box("${box.name}|${this.name}") {
-        val (leftBounds, rightBounds) = edge.bounds.partitionLeft(width)
-        this@packLeft.render(withEdgeBounds(rightBounds))
-        box.render(withEdgeBounds(leftBounds))
-    }
+    return box("${box.name}|${this.name}",
+        focus = {
+            val (leftBounds, rightBounds) = edge.bounds.partitionLeft(width)
+            this@packLeft.focus(withEdgeBounds(rightBounds))
+            box.focus(withEdgeBounds(leftBounds))
+        },
+        render = {
+            val (leftBounds, rightBounds) = edge.bounds.partitionLeft(width)
+            this@packLeft.render(withEdgeBounds(rightBounds))
+            box.render(withEdgeBounds(leftBounds))
+        })
 }
 
 fun Box.before(box: Box): Box {
-    return box("${this.name}\\${box.name}") {
-        val foreBounds = edge.bounds.shiftZ(-1)
-        box.render(this)
-        this@before.render(this.withEdgeBounds(foreBounds))
-    }
+    // TODO: Clean up duplication with a multi-box mapEdge
+    return box("${this.name}\\${box.name}",
+        focus = {
+            val foreBounds = edge.bounds.shiftZ(-1)
+            box.focus(this)
+            this@before.focus(this.withEdgeBounds(foreBounds))
+        },
+        render = {
+            val foreBounds = edge.bounds.shiftZ(-1)
+            box.render(this)
+            this@before.render(this.withEdgeBounds(foreBounds))
+        })
+}
+
+fun Box.pad(size: Int): Box {
+    return mapEdge { it.inset(size) }
 }
 
 fun Box.maxHeight(maxHeight: Int): Box {
-    return box(name) {
-        val confined = edge.bounds.confine(edge.bounds.width, maxHeight, 0.5f)
-        render(this.withEdgeBounds(confined))
-    }
+    return mapEdge { it.confine(it.width, maxHeight, 0.5f) }
 }
 
 fun Box.maxWidth(maxWidth: Int): Box {
-    return box(name) {
-        val confined = edge.bounds.confine(maxWidth, edge.bounds.height, 0.0f)
-        render(this.withEdgeBounds(confined))
-    }
+    return mapEdge { it.confine(maxWidth, it.height, 0.0f) }
 }
+
+fun Box.mapEdge(map: (edgeBounds: BoxBounds) -> BoxBounds): Box = box(
+    name = name,
+    focus = {
+        val bounds = map(edge.bounds)
+        this@mapEdge.focus(this.withEdgeBounds(bounds))
+    },
+    render = {
+        val bounds = map(edge.bounds)
+        render(this.withEdgeBounds(bounds))
+    }
+)
 
 interface Box : BoxContext {
     val name: String
     fun render(spotScope: SpotScope)
+    fun focus(focusScope: FocusScope)
 }

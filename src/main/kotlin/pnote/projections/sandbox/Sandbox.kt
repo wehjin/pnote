@@ -29,6 +29,19 @@ class LanternaProjector : BoxContext {
         data class KeyPress(val keyStroke: KeyStroke) : RenderAction()
     }
 
+    class ActiveFocus {
+        var focusId: Long? = null
+        val focusables = mutableMapOf<Long, Focusable>()
+
+        val keyReader: KeyReader?
+            get() = focusId?.let { focusables[it]?.keyReader }
+
+        fun selectFocus() {
+            val nextFocusId = focusId?.let { focusables[it]?.focusableId } ?: focusables.keys.firstOrNull()
+            focusId = nextFocusId
+        }
+    }
+
     fun start() {
 
         val sideBox = inputBox().maxHeight(1).pad(2).before(colorBox(primarySwatch.color))
@@ -48,26 +61,35 @@ class LanternaProjector : BoxContext {
             }
         }
         runBlocking {
-            val readers = mutableSetOf<KeyReader>()
+            val activeFocus = ActiveFocus()
             for (action in channel) {
                 when (action) {
-                    RenderAction.Refresh -> {
-                        readers.clear()
-                        screen.renderBox(box, readers, channel)
-                    }
-                    is RenderAction.KeyPress -> {
-                        readers.forEach { it.receiveKey(action.keyStroke) }
-                    }
+                    RenderAction.Refresh -> screen.renderBox(box, activeFocus, channel)
+                    is RenderAction.KeyPress -> activeFocus.keyReader?.receiveKey(action.keyStroke)
                 }
             }
         }
     }
 
-    private fun TerminalScreen.renderBox(box: Box, readers: MutableSet<KeyReader>, channel: SendChannel<RenderAction>) {
+    private fun TerminalScreen.renderBox(box: Box, activeFocus: ActiveFocus, channel: SendChannel<RenderAction>) {
         val size = terminalSize
         val boxEdge = object : BoxEdge {
             override val bounds: BoxBounds = BoxBounds(size.columns, size.rows)
         }
+
+        activeFocus.focusables.clear()
+        box.focus(object : FocusScope {
+            override val edge: BoxEdge = boxEdge
+            override fun setFocusable(focusable: Focusable) {
+                activeFocus.focusables[focusable.focusableId] = focusable
+            }
+
+            override fun setChanged(bounds: BoxBounds) {
+                channel.offer(RenderAction.Refresh)
+            }
+        })
+        activeFocus.selectFocus()
+
         (0 until size.columns).forEach { col ->
             (0 until size.rows).forEach { row ->
                 val spotScope = object : SpotScope {
@@ -76,10 +98,7 @@ class LanternaProjector : BoxContext {
                     override val edge: BoxEdge = boxEdge
                     override var colorMinZ: Int = Int.MAX_VALUE
                     override var glyphMinZ: Int = Int.MAX_VALUE
-
-                    override fun addKeyReader(keyReader: KeyReader) {
-                        readers.add(keyReader)
-                    }
+                    override val activeFocusId: Long = activeFocus.focusId ?: 0
 
                     override fun setChanged(bounds: BoxBounds) {
                         channel.offer(RenderAction.Refresh)
