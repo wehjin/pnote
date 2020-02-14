@@ -3,8 +3,11 @@
  */
 package pnote
 
+import com.googlecode.lanterna.TextColor
 import kotlinx.coroutines.runBlocking
 import pnote.projections.projectBrowseNotes
+import pnote.projections.sandbox.BoxContext
+import pnote.projections.sandbox.ColorSwatch
 import pnote.scopes.AppScope
 import pnote.stories.browseNotes
 import pnote.tools.Cryptor
@@ -27,8 +30,25 @@ fun main(args: Array<String>) {
     val commandName = "pnote$commandSuffix"
     val app = App(commandName)
     val story = app.browseNotes()
-    val projector = Projector()
+
+
+    val projector = LineProjector()
     val projection = projector.projectBrowseNotes(story)
     runBlocking { projection.join() }
 }
 
+class BoxProjector : BoxContext {
+
+
+
+    override val primarySwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x34, 0x49, 0x55))
+    override val primaryDarkSwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x23, 0x2f, 0x34))
+    override val primaryLightSwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72))
+    override val surfaceSwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
+    override val secondarySwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
+}

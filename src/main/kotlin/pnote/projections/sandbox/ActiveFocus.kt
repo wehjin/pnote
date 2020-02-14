@@ -6,14 +6,22 @@ import kotlinx.coroutines.channels.SendChannel
 import java.lang.Integer.max
 import java.lang.Integer.min
 
-class ActiveFocus(private val channel: SendChannel<LanternaProjector.RenderAction>) {
+class ActiveFocus(private val channel: SendChannel<RenderAction>) {
     var focusId: Long? = null
     val focusables = mutableMapOf<Long, Focusable>()
 
-    private val keyReader: KeyReader?
-        get() = focusId?.let { focusables[it]?.keyReader }
+    fun update(box: Box, edge: BoxEdge) {
+        focusables.clear()
+        box.focus(object : FocusScope {
+            override val edge: BoxEdge = edge
+            override fun setFocusable(focusable: Focusable) {
+                focusables[focusable.focusableId] = focusable
+            }
 
-    fun selectFocus() {
+            override fun setChanged(bounds: BoxBounds) {
+                channel.offer(RenderAction.Refresh)
+            }
+        })
         focusId = when (val oldId = focusId) {
             null -> selectNewFocus(null, true)
             else -> if (focusables.containsKey(oldId)) oldId else selectNewFocus(oldId, true)
@@ -33,7 +41,7 @@ class ActiveFocus(private val channel: SendChannel<LanternaProjector.RenderActio
             val nextFocusId = selectNewFocus(focusId, forward)
             nextFocusId?.let {
                 focusId = it
-                channel.offer(LanternaProjector.RenderAction.Refresh)
+                channel.offer(RenderAction.Refresh)
             }
         }
     }
@@ -56,4 +64,7 @@ class ActiveFocus(private val channel: SendChannel<LanternaProjector.RenderActio
             }
         }
     }
+
+    private val keyReader: KeyReader?
+        get() = focusId?.let { focusables[it]?.keyReader }
 }

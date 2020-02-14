@@ -1,10 +1,10 @@
 package pnote
 
 import kotlinx.coroutines.Job
-import pnote.scopes.ProjectorScope
+import pnote.scopes.LineProjectorScope
 import kotlin.coroutines.CoroutineContext
 
-class Projector : ProjectorScope {
+class LineProjector : LineProjectorScope {
     override val coroutineContext: CoroutineContext =
         Job()
 

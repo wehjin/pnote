@@ -15,8 +15,8 @@ interface SpotScope {
     val glyphMinZ: Int
     val activeFocusId: Long
 
-    fun setColor(color: TextColor, colorMinZ: Int)
-    fun setGlyph(glyph: Char, glyphColor: TextColor, glyphMinZ: Int)
+    fun setColor(color: TextColor, colorZ: Int)
+    fun setGlyph(glyph: Char, glyphColor: TextColor, glyphZ: Int)
     fun setChanged(bounds: BoxBounds)
     fun setCursor(col: Int, row: Int)
 }

@@ -1,12 +1,11 @@
 package pnote.projections.sandbox
 
 import com.googlecode.lanterna.TerminalPosition
+import com.googlecode.lanterna.TerminalSize
 import com.googlecode.lanterna.TextCharacter
 import com.googlecode.lanterna.TextColor
-import com.googlecode.lanterna.input.KeyStroke
 import com.googlecode.lanterna.input.KeyType
 import com.googlecode.lanterna.screen.TerminalScreen
-import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
@@ -15,8 +14,32 @@ fun main() {
     LanternaProjector().start()
 }
 
-class LanternaProjector : BoxContext {
+fun CoroutineScope.projectBox(init: BoxInitScope.() -> Box): Job = launch(Dispatchers.IO) {
+    terminalScreen().use { screen ->
+        val renderChannel = Channel<RenderAction>(10).apply { offer(RenderAction.Refresh) }
+        val box = RenderChannelBoxInitScope(renderChannel).init()
+        val inputJob = launch(Dispatchers.IO) {
+            while (true) {
+                val keyStroke = screen.readInput()
+                when (keyStroke.keyType) {
+                    KeyType.Unknown -> Unit
+                    else -> renderChannel.send(RenderAction.KeyPress(keyStroke))
+                }
+            }
+        }
+        val activeFocus = ActiveFocus(renderChannel)
+        actions@ for (action in renderChannel) {
+            when (action) {
+                RenderAction.Refresh -> updateScreen(screen, box, activeFocus, renderChannel)
+                is RenderAction.KeyPress -> activeFocus.routeKey(action.keyStroke)
+                RenderAction.Quit -> break@actions
+            }
+        }
+        inputJob.cancel()
+    }
+}
 
+class LanternaProjector : BoxContext {
     override val primarySwatch: ColorSwatch =
         ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x34, 0x49, 0x55))
     override val primaryDarkSwatch: ColorSwatch =
@@ -28,122 +51,91 @@ class LanternaProjector : BoxContext {
     override val secondarySwatch: ColorSwatch =
         ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
 
-    sealed class RenderAction {
-        object Refresh : RenderAction()
-        data class KeyPress(val keyStroke: KeyStroke) : RenderAction()
-        object Quit : RenderAction()
-    }
-
     fun start() {
-        val renderChannel = Channel<RenderAction>(10).apply { offer(RenderAction.Refresh) }
-        val passwordInput = inputBox()
-        val checkInput = inputBox()
-        val importButton = buttonBox("Import", secondarySwatch) {
-            renderChannel.offer(RenderAction.Quit)
+        GlobalScope.projectBox {
+            val passwordInput = inputBox()
+            val checkInput = inputBox()
+            val importButton = buttonBox("Import", secondarySwatch) { endProjection() }
+            val inputCluster = passwordInput
+                .packBottom(1, colorBox(null))
+                .packBottom(1, checkInput)
+                .packBottom(1, colorBox(null))
+                .packBottom(1, importButton)
+                .maxHeight(5)
+            val sideBox = inputCluster.pad(2).before(colorBox(primaryDarkSwatch.color))
+            val contentMessage = labelBox("Import Password", surfaceSwatch.glyphColor)
+            val contentBackground = colorBox(surfaceSwatch.color)
+            val contentBox = contentMessage.before(contentBackground)
+            contentBox.packRight(30, sideBox)
         }
-        val inputCluster = passwordInput
-            .packBottom(1, colorBox(null))
-            .packBottom(1, checkInput)
-            .packBottom(1, colorBox(null))
-            .packBottom(1, importButton)
-            .maxHeight(5)
-        val sideBox = inputCluster.pad(2).before(colorBox(primaryDarkSwatch.color))
-        val contentBox = labelBox("Import Password", surfaceSwatch.glyphColor).before(colorBox(surfaceSwatch.color))
-        val box = contentBox.packRight(30, sideBox)
+    }
+}
 
-        val terminal = DefaultTerminalFactory().createTerminal()
-        val screen = TerminalScreen(terminal).apply { startScreen() }
-        screen.use {
-            val inputJob = GlobalScope.launch {
-                while (true) {
-                    val keyStroke = withContext(Dispatchers.IO) { screen.readInput() }
-                    when (keyStroke.keyType) {
-                        KeyType.Unknown -> Unit
-                        else -> renderChannel.send(RenderAction.KeyPress(keyStroke))
-                    }
-                }
-            }
-            runBlocking {
-                val activeFocus = ActiveFocus(renderChannel)
-                actions@ for (action in renderChannel) {
-                    when (action) {
-                        RenderAction.Refresh -> screen.renderBox(box, activeFocus, renderChannel)
-                        is RenderAction.KeyPress -> activeFocus.routeKey(action.keyStroke)
-                        RenderAction.Quit -> break@actions
-                    }
-                }
-            }
-            inputJob.cancel()
+private fun updateScreen(
+    screen: TerminalScreen,
+    box: Box,
+    activeFocus: ActiveFocus,
+    channel: SendChannel<RenderAction>
+) {
+    val edge = ScreenBoxEdge(screen)
+    activeFocus.update(box, edge)
+    edge.bounds.map { col, row ->
+        val scope = ScreenSpot(screen, channel, edge, col, row, activeFocus.focusId ?: 0)
+        box.render(scope)
+    }
+    screen.refresh()
+}
+
+private class ScreenBoxEdge(screen: TerminalScreen) : BoxEdge {
+    private val size: TerminalSize by lazy { screen.terminalSize }
+    override val bounds: BoxBounds = BoxBounds(size.columns, size.rows)
+}
+
+private class ScreenSpot(
+    private val screen: TerminalScreen,
+    private val channel: SendChannel<RenderAction>,
+    override val edge: BoxEdge,
+    override val col: Int, override val row: Int,
+    activeFocusId: Long?
+) : SpotScope {
+    override var colorMinZ: Int = Int.MAX_VALUE
+    override var glyphMinZ: Int = Int.MAX_VALUE
+    override val activeFocusId: Long = activeFocusId ?: 0
+
+    override fun setChanged(bounds: BoxBounds) {
+        channel.offer(RenderAction.Refresh)
+    }
+
+    override fun setCursor(col: Int, row: Int) {
+        screen.cursorPosition = if (col < 0 && row < 0) null else TerminalPosition(col, row)
+    }
+
+    override fun setGlyph(glyph: Char, glyphColor: TextColor, glyphZ: Int) {
+        if (glyphZ <= glyphMinZ) {
+            val color = getOldColor()
+            screen.setCharacter(col, row, TextCharacter(glyph, glyphColor, color))
+            glyphMinZ = glyphZ
         }
     }
 
-    private fun TerminalScreen.renderBox(box: Box, activeFocus: ActiveFocus, channel: SendChannel<RenderAction>) {
-        val size = terminalSize
-        val boxEdge = object : BoxEdge {
-            override val bounds: BoxBounds = BoxBounds(size.columns, size.rows)
+    override fun setColor(color: TextColor, colorZ: Int) {
+        if (colorZ <= colorMinZ) {
+            val (glyph, glyphColor) = getOldGlyph()
+            screen.setCharacter(col, row, TextCharacter(glyph, glyphColor, color))
+            colorMinZ = colorZ
         }
-
-        activeFocus.focusables.clear()
-        box.focus(object : FocusScope {
-            override val edge: BoxEdge = boxEdge
-            override fun setFocusable(focusable: Focusable) {
-                activeFocus.focusables[focusable.focusableId] = focusable
-            }
-
-            override fun setChanged(bounds: BoxBounds) {
-                channel.offer(RenderAction.Refresh)
-            }
-        })
-        activeFocus.selectFocus()
-
-        (0 until size.columns).forEach { col ->
-            (0 until size.rows).forEach { row ->
-                val spotScope = object : SpotScope {
-                    override val col: Int = col
-                    override val row: Int = row
-                    override val edge: BoxEdge = boxEdge
-                    override var colorMinZ: Int = Int.MAX_VALUE
-                    override var glyphMinZ: Int = Int.MAX_VALUE
-                    override val activeFocusId: Long = activeFocus.focusId ?: 0
-
-                    override fun setChanged(bounds: BoxBounds) {
-                        channel.offer(RenderAction.Refresh)
-                    }
-
-                    override fun setCursor(col: Int, row: Int) {
-                        cursorPosition = if (col < 0 && row < 0) null else TerminalPosition(col, row)
-                    }
-
-                    override fun setGlyph(glyph: Char, glyphColor: TextColor, glyphMinZ: Int) {
-                        if (glyphMinZ <= this.glyphMinZ) {
-                            val color = getOldColor()
-                            setCharacter(col, row, TextCharacter(glyph, glyphColor, color))
-                            this.glyphMinZ = glyphMinZ
-                        }
-                    }
-
-                    override fun setColor(color: TextColor, colorMinZ: Int) {
-                        if (colorMinZ <= this.colorMinZ) {
-                            val (glyph, glyphColor) = getOldGlyph()
-                            setCharacter(col, row, TextCharacter(glyph, glyphColor, color))
-                            this.colorMinZ = colorMinZ
-                        }
-                    }
-
-                    private fun getOldColor(): TextColor = oldCharacter(colorMinZ).backgroundColor
-
-                    private fun getOldGlyph(): Pair<Char, TextColor> =
-                        oldCharacter(glyphMinZ).let { Pair(it.character, it.foregroundColor) }
-
-                    private fun oldCharacter(glyphMinZ1: Int): TextCharacter =
-                        when (glyphMinZ1) {
-                            Int.MIN_VALUE -> getFrontCharacter(col, row)
-                            else -> getBackCharacter(col, row)
-                        }
-                }
-                box.render(spotScope)
-            }
-        }
-        refresh()
     }
+
+    private fun getOldColor(): TextColor = oldCharacter(colorMinZ).backgroundColor
+
+    private fun getOldGlyph(): Pair<Char, TextColor> {
+        val oldCharacter = oldCharacter(glyphMinZ)
+        return oldCharacter.let { Pair(it.character, it.foregroundColor) }
+    }
+
+    private fun oldCharacter(glyphMinZ1: Int): TextCharacter =
+        when (glyphMinZ1) {
+            Int.MIN_VALUE -> screen.getFrontCharacter(col, row)
+            else -> screen.getBackCharacter(col, row)
+        }
 }

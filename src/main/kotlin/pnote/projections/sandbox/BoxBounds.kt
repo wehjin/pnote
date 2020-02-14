@@ -73,4 +73,10 @@ data class BoxBounds(
         val nextZ = this.z
         return BoxBounds(nextRight, nextBottom, nextLeft, nextTop, nextZ)
     }
+
+    fun <T> map(block: (col: Int, row: Int) -> T): List<T> {
+        return (left until right).map { col ->
+            (top until bottom).map { row -> block(col, row) }
+        }.flatten()
+    }
 }

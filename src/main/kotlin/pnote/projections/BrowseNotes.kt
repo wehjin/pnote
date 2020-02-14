@@ -2,12 +2,12 @@ package pnote.projections
 
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.launch
-import pnote.scopes.ProjectorScope
+import pnote.scopes.LineProjectorScope
 import pnote.stories.BrowseNotes
 import pnote.stories.BrowseNotes.*
 import pnote.tools.Banner
 
-fun ProjectorScope.projectBrowseNotes(story: Story<BrowseNotes>) = launch {
+fun LineProjectorScope.projectBrowseNotes(story: Story<BrowseNotes>) = launch {
     visionLoop@ for (vision in story.subscribe()) {
         when (vision) {
             is Importing -> projectImportPassword(vision.substory)
@@ -18,7 +18,7 @@ fun ProjectorScope.projectBrowseNotes(story: Story<BrowseNotes>) = launch {
     }
 }
 
-private fun ProjectorScope.projectBrowsing(vision: Browsing) {
+private fun LineProjectorScope.projectBrowsing(vision: Browsing) {
     screenLine()
     vision.banners.forEachIndexed { i, banner ->
         banner as Banner.Basic

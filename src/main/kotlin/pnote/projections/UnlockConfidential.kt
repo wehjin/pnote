@@ -2,11 +2,11 @@ package pnote.projections
 
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.launch
-import pnote.scopes.ProjectorScope
+import pnote.scopes.LineProjectorScope
 import pnote.stories.UnlockConfidential
 
 
-fun ProjectorScope.projectUnlockConfidential(story: Story<UnlockConfidential>) = launch {
+fun LineProjectorScope.projectUnlockConfidential(story: Story<UnlockConfidential>) = launch {
     visionLoop@ for (vision in story.subscribe()) {
         when (vision) {
             is UnlockConfidential.Unlocking -> {
