@@ -41,12 +41,7 @@ fun BoxContext.buttonBox(text: String, swatch: ColorSwatch, onPress: () -> Unit)
                 override val readerId: Long = focusableId
                 override fun receiveKey(keyStroke: KeyStroke) {
                     println("KEYSTROKE: $keyStroke")
-                    val isPress = when {
-                        keyStroke.keyType == KeyType.Enter -> true
-                        keyStroke.character == ' ' -> true
-                        else -> false
-                    }
-                    if (isPress) {
+                    if (keyStroke.character == ' ') {
                         GlobalScope.launch {
                             pressed = true
                             setChanged(edge.bounds)
