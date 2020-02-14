@@ -18,18 +18,18 @@ interface BoxContext {
 }
 
 @Suppress("unused")
-fun BoxContext.columnBox(levelHeight: Int, vararg boxes: Box<*>): Box<*> {
+fun BoxContext.columnBox(levelHeight: Int, snap: Snap, vararg boxes: Box<*>): Box<*> {
     val reversed = boxes.toList()
     val stack = reversed.drop(1).fold(
         initial = reversed.first(),
         operation = { stack, box -> stack.packBottom(levelHeight, box) }
     )
-    return stack.maxHeight(levelHeight * boxes.size)
+    return stack.maxHeight(levelHeight * boxes.size, snap)
 }
 
-fun BoxContext.messageBox(message: String, swatch: ColorSwatch): Box<String> {
-    val label = labelBox(message, swatch.glyphColor)
-    val labelAndFill = label.before(fillBox(swatch.color))
+fun BoxContext.messageBox(message: String, swatch: ColorSwatch, snap: Snap = Snap.CENTER): Box<String> {
+    val label = labelBox(message, swatch.strokeColor, snap)
+    val labelAndFill = label.before(fillBox(swatch.fillColor))
     return box(
         name = "MessageBox",
         render = labelAndFill::render,
@@ -54,7 +54,7 @@ fun BoxContext.buttonBox(
             } else {
                 swatch
             }
-            labelBox(label, stateSwatch.glyphColor).before(fillBox(stateSwatch.color))
+            labelBox(label, stateSwatch.strokeColor).before(fillBox(stateSwatch.fillColor))
                 .maxWidth(label.length, 0.5f)
                 .render(this)
             if (activeFocusId == focusableId && edge.bounds.isTopLeftCorner(col, row)) {
@@ -90,7 +90,7 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
         name = "InputBox",
         render = {
             if (edge.bounds.hits(col, row, colorMinZ)) {
-                setColor(primaryLightSwatch.color, edge.bounds.z)
+                setColor(primaryLightSwatch.fillColor, edge.bounds.z)
             }
             if (edge.bounds.hits(col, row, glyphMinZ)) {
                 val inset = edge.bounds.leftInset(col)
@@ -101,9 +101,9 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
                     content
                 }
                 if (inset < displayContent.length)
-                    setGlyph(displayContent[inset], primaryLightSwatch.glyphColor, edge.bounds.z)
+                    setGlyph(displayContent[inset], primaryLightSwatch.strokeColor, edge.bounds.z)
                 else {
-                    setGlyph(' ', primaryLightSwatch.glyphColor, edge.bounds.z)
+                    setGlyph(' ', primaryLightSwatch.strokeColor, edge.bounds.z)
                 }
                 val cursorInset = displayContent.length
                 if (edge.bounds.isTopLeftCorner(col - cursorInset, row) && activeFocusId == focusableId) {
@@ -137,12 +137,12 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
 
 private fun randomId(): Long = Random.nextLong().absoluteValue
 
-fun BoxContext.labelBox(text: String, textColor: TextColor, snapX: Float = 0.5f): Box<String> {
+fun BoxContext.labelBox(text: String, textColor: TextColor, snap: Snap = Snap.CENTER): Box<String> {
     var label: String = text
     return box(
         name = "LabelBox",
         render = {
-            val labelBounds = edge.bounds.confine(label.length, 1, snapX)
+            val labelBounds = edge.bounds.confine(label.length, 1, snap)
             if (labelBounds.hits(col, row, glyphMinZ)) {
                 setGlyph(label[labelBounds.leftInset(col)], textColor, labelBounds.z)
             }
@@ -152,12 +152,25 @@ fun BoxContext.labelBox(text: String, textColor: TextColor, snapX: Float = 0.5f)
     )
 }
 
+
 fun BoxContext.gapBox() = fillBox(null)
+
 fun BoxContext.fillBox(color: TextColor?): Box<Void> = box(
     name = "ColorBox",
     render = {
         if (edge.bounds.contains(col, row) && edge.bounds.z <= colorMinZ && color != null) {
             setColor(color, edge.bounds.z)
+        }
+    },
+    focus = noFocus,
+    setContent = noContent
+)
+
+fun BoxContext.glyphBox(glyph: Char, color: TextColor): Box<Void> = box(
+    name = "GlyphBox",
+    render = {
+        if (edge.bounds.contains(col, row) && edge.bounds.z <= glyphMinZ) {
+            setGlyph(glyph, color, edge.bounds.z)
         }
     },
     focus = noFocus,

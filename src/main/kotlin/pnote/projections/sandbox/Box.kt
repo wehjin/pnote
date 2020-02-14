@@ -77,9 +77,15 @@ fun <T, U> Box<T>.before(box: Box<U>): Box<Void> = box(
     setContent = noContent
 )
 
-fun <T> Box<T>.pad(size: Int): Box<T> = mapEdge { it.inset(size) }
-fun <T> Box<T>.maxHeight(maxHeight: Int): Box<T> = mapEdge { it.confine(it.width, maxHeight, 0.5f) }
-fun <T> Box<T>.maxWidth(maxWidth: Int, snap: Float = 0.5f): Box<T> = mapEdge { it.confine(maxWidth, it.height, snap) }
+fun <T> Box<T>.pad(size: Int): Box<T> =
+    mapEdge { it.inset(size) }
+
+fun <T> Box<T>.maxHeight(maxHeight: Int, snap: Snap = Snap.CENTER): Box<T> =
+    mapEdge { it.confine(it.width, maxHeight, snap) }
+
+fun <T> Box<T>.maxWidth(maxWidth: Int, snap: Float = 0.5f): Box<T> =
+    mapEdge { it.confine(maxWidth, it.height, Snap(snap, 0.5f)) }
+
 fun <T> Box<T>.mapEdge(map: (edgeBounds: BoxBounds) -> BoxBounds): Box<T> = box(
     name = name,
     render = {

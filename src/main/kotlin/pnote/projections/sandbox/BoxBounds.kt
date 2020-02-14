@@ -68,12 +68,12 @@ data class BoxBounds(
         return Pair(leftBounds, rightBounds)
     }
 
-    fun confine(width: Int, height: Int, snapX: Float): BoxBounds {
+    fun confine(width: Int, height: Int, snap: Snap): BoxBounds {
         val extraWidth = this.width - width
         val extraHeight = this.height - height
-        val nextLeft = this.left + (extraWidth * snapX).toInt()
+        val nextLeft = this.left + (extraWidth * snap.x).toInt()
         val nextRight = nextLeft + width
-        val nextTop = this.top + extraHeight / 2
+        val nextTop = this.top + (extraHeight * snap.y).toInt()
         val nextBottom = nextTop + height
         val nextZ = this.z
         return BoxBounds(nextRight, nextBottom, nextLeft, nextTop, nextZ)

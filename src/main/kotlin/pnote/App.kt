@@ -13,10 +13,7 @@ import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes
 import pnote.stories.UnlockConfidential
 import pnote.stories.browseNotes
-import pnote.tools.Cryptor
-import pnote.tools.FileNoteBag
-import pnote.tools.NoteBag
-import pnote.tools.fileCryptor
+import pnote.tools.*
 import java.io.File
 
 class App(private val commandName: String) : AppScope {
@@ -44,6 +41,7 @@ fun Story<BrowseNotes>.project(boxScreen: BoxScreen, boxContext: BoxContext) = b
             println("$name: $vision")
             when (vision) {
                 is BrowseNotes.Unlocking -> vision.substory.projectUnlockConfidential(boxScreen, boxContext)
+                is BrowseNotes.Browsing -> vision.projectBrowsing(boxScreen, boxContext)
                 else -> {
                     messageBox.setContent(vision.toString())
                     boxScreen.setBox(messageBox)
@@ -53,6 +51,33 @@ fun Story<BrowseNotes>.project(boxScreen: BoxScreen, boxContext: BoxContext) = b
     }
 }
 
+fun BrowseNotes.Browsing.projectBrowsing(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
+    val selected = 0
+    val pageSwatch = primaryDarkSwatch
+    val pageTitle = labelBox("CONFIDENTIAL", pageSwatch.strokeColor, Snap.TOP_RIGHT).pad(1)
+    val pageBackground = fillBox(pageSwatch.fillColor)
+    val pageUnderlay = pageTitle.before(pageBackground)
+    val listSwatch = primarySwatch
+    val listUnderlay = fillBox(listSwatch.fillColor)
+    val listOverlay = when (banners.size) {
+        0 -> messageBox("Empty", listSwatch)
+        else -> {
+            val bannerBoxes = banners.mapIndexed { i, banner ->
+                banner as Banner.Basic
+                val swatch = if (i == selected) secondarySwatch else listSwatch
+                val title = labelBox(banner.title, swatch.strokeColor)
+                val divider = glyphBox('_', pageSwatch.fillColor)
+                val overlay = columnBox(1, Snap.TOP, gapBox(), title, divider)
+                overlay.before(fillBox(swatch.fillColor)).maxHeight(3, Snap.TOP)
+            }
+            columnBox(3, Snap.TOP, *bannerBoxes.toTypedArray())
+        }
+    }
+    val list = listOverlay.before(listUnderlay)
+    val page = list.maxWidth(40).packTop(9, gapBox()).before(pageUnderlay)
+    boxScreen.setBox(page)
+}
+
 fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
     GlobalScope.launch {
         for (vision in subscribe()) {
@@ -60,14 +85,13 @@ fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, bo
             when (vision) {
                 is UnlockConfidential.Unlocking -> {
                     var password = ""
-                    val errorBox = labelBox(
+                    val errorBox = this@run.labelBox(
                         text = if (vision.failCount > 0) "Invalid password" else "",
-                        textColor = primaryLightSwatch.color,
-                        snapX = 0f
+                        textColor = primaryLightSwatch.fillColor,
+                        snap = Snap(0f, 0.5f)
                     )
-                    val content = columnBox(
-                        1,
-                        labelBox("Enter Password", surfaceSwatch.glyphColor),
+                    val content = columnBox(1, Snap.CENTER,
+                        labelBox("Enter Password", surfaceSwatch.strokeColor),
                         gapBox(),
                         inputBox {
                             password = it
@@ -78,7 +102,7 @@ fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, bo
                         gapBox(),
                         buttonBox("Submit") { vision.setPassword(password) }
                     )
-                    val box = content.before(fillBox(surfaceSwatch.color))
+                    val box = content.before(fillBox(surfaceSwatch.fillColor))
                     boxScreen.setBox(box)
                 }
                 is UnlockConfidential.Finished -> Unit
