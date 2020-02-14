@@ -18,50 +18,62 @@ fun main() {
 class LanternaProjector : BoxContext {
 
     override val primarySwatch: ColorSwatch =
-        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x62, 0x00, 0xEE))
+        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x34, 0x49, 0x55))
+    override val primaryDarkSwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x23, 0x2f, 0x34))
     override val primaryLightSwatch: ColorSwatch =
-        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xBB, 0x86, 0xFC))
+        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72))
     override val surfaceSwatch: ColorSwatch =
         ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
+    override val secondarySwatch: ColorSwatch =
+        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
 
     sealed class RenderAction {
         object Refresh : RenderAction()
         data class KeyPress(val keyStroke: KeyStroke) : RenderAction()
+        object Quit : RenderAction()
     }
 
     fun start() {
-
-        val cluster = inputBox()
-            .packBottom(1, colorBox(primarySwatch.color))
-            .packBottom(1, inputBox())
-            .packBottom(1, colorBox(primarySwatch.color))
-            .packBottom(1, inputBox())
+        val renderChannel = Channel<RenderAction>(10).apply { offer(RenderAction.Refresh) }
+        val passwordInput = inputBox()
+        val checkInput = inputBox()
+        val importButton = buttonBox("Import", secondarySwatch) {
+            renderChannel.offer(RenderAction.Quit)
+        }
+        val inputCluster = passwordInput
+            .packBottom(1, colorBox(null))
+            .packBottom(1, checkInput)
+            .packBottom(1, colorBox(null))
+            .packBottom(1, importButton)
             .maxHeight(5)
-        val sideBox = cluster.pad(2).before(colorBox(primarySwatch.color))
-
+        val sideBox = inputCluster.pad(2).before(colorBox(primaryDarkSwatch.color))
         val contentBox = labelBox("Import Password", surfaceSwatch.glyphColor).before(colorBox(surfaceSwatch.color))
         val box = contentBox.packRight(30, sideBox)
 
         val terminal = DefaultTerminalFactory().createTerminal()
         val screen = TerminalScreen(terminal).apply { startScreen() }
-        val renderChannel = Channel<RenderAction>(10).apply { offer(RenderAction.Refresh) }
-        GlobalScope.launch {
-            while (true) {
-                val keyStroke = withContext(Dispatchers.IO) { screen.readInput() }
-                when (keyStroke.keyType) {
-                    KeyType.Unknown -> Unit
-                    else -> renderChannel.send(RenderAction.KeyPress(keyStroke))
+        screen.use {
+            val inputJob = GlobalScope.launch {
+                while (true) {
+                    val keyStroke = withContext(Dispatchers.IO) { screen.readInput() }
+                    when (keyStroke.keyType) {
+                        KeyType.Unknown -> Unit
+                        else -> renderChannel.send(RenderAction.KeyPress(keyStroke))
+                    }
                 }
             }
-        }
-        runBlocking {
-            val activeFocus = ActiveFocus(renderChannel)
-            for (action in renderChannel) {
-                when (action) {
-                    RenderAction.Refresh -> screen.renderBox(box, activeFocus, renderChannel)
-                    is RenderAction.KeyPress -> activeFocus.routeKey(action.keyStroke)
+            runBlocking {
+                val activeFocus = ActiveFocus(renderChannel)
+                actions@ for (action in renderChannel) {
+                    when (action) {
+                        RenderAction.Refresh -> screen.renderBox(box, activeFocus, renderChannel)
+                        is RenderAction.KeyPress -> activeFocus.routeKey(action.keyStroke)
+                        RenderAction.Quit -> break@actions
+                    }
                 }
             }
+            inputJob.cancel()
         }
     }
 
@@ -99,7 +111,7 @@ class LanternaProjector : BoxContext {
                     }
 
                     override fun setCursor(col: Int, row: Int) {
-                        cursorPosition = TerminalPosition(col, row)
+                        cursorPosition = if (col < 0 && row < 0) null else TerminalPosition(col, row)
                     }
 
                     override fun setGlyph(glyph: Char, glyphColor: TextColor, glyphMinZ: Int) {

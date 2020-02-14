@@ -3,39 +3,70 @@ package pnote.projections.sandbox
 import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.input.KeyStroke
 import com.googlecode.lanterna.input.KeyType
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
 interface BoxContext {
     val primarySwatch: ColorSwatch
     val primaryLightSwatch: ColorSwatch
+    val primaryDarkSwatch: ColorSwatch
     val surfaceSwatch: ColorSwatch
+    val secondarySwatch: ColorSwatch
 }
 
-fun BoxContext.inputBox(): Box {
-    var content = "***"
-    val focusableId = Random.nextLong().absoluteValue
+fun BoxContext.buttonBox(text: String, swatch: ColorSwatch, onPress: () -> Unit): Box {
+    val focusableId = randomId()
+    var pressed = false
     return box(
-        name = "InputBox",
+        name = "ButtonBox",
+        render = {
+            val label = if (activeFocusId == focusableId) "[ $text ]" else "  $text  "
+            val stateSwatch = if (pressed) {
+                primarySwatch
+            } else {
+                swatch
+            }
+            labelBox(label, stateSwatch.glyphColor).before(colorBox(stateSwatch.color))
+                .maxWidth(label.length, 0.5f)
+                .render(this)
+            if (activeFocusId == focusableId && edge.bounds.isTopLeftCorner(col, row)) {
+                setCursor(-1, -1)
+            }
+        },
         focus = {
             setFocusable(Focusable(focusableId, edge.bounds, object : KeyReader {
                 override val readerId: Long = focusableId
                 override fun receiveKey(keyStroke: KeyStroke) {
-                    println("Received key $keyStroke in inputBox")
-                    when (keyStroke.keyType) {
-                        KeyType.Character -> {
-                            content += keyStroke.character.toString()
+                    println("KEYSTROKE: $keyStroke")
+                    val isPress = when {
+                        keyStroke.keyType == KeyType.Enter -> true
+                        keyStroke.character == ' ' -> true
+                        else -> false
+                    }
+                    if (isPress) {
+                        GlobalScope.launch {
+                            pressed = true
                             setChanged(edge.bounds)
-                        }
-                        KeyType.Backspace, KeyType.Delete -> {
-                            content = if (content.isNotEmpty()) content.substring(0, content.lastIndex) else ""
+                            delay(200)
+                            pressed = false
                             setChanged(edge.bounds)
+                            delay(100)
+                            onPress()
                         }
-                        else -> Unit
                     }
                 }
             }))
-        },
+        }
+    )
+}
+
+fun BoxContext.inputBox(): Box {
+    var content = ""
+    val focusableId = randomId()
+    return box("InputBox",
         render = {
             if (edge.bounds.hits(col, row, colorMinZ)) {
                 setColor(primaryLightSwatch.color, edge.bounds.z)
@@ -59,29 +90,49 @@ fun BoxContext.inputBox(): Box {
                     setCursor(col, row)
                 }
             }
+        },
+        focus = {
+            setFocusable(Focusable(focusableId, edge.bounds, object : KeyReader {
+                override val readerId: Long = focusableId
+                override fun receiveKey(keyStroke: KeyStroke) {
+                    when (keyStroke.keyType) {
+                        KeyType.Character -> {
+                            content += keyStroke.character.toString()
+                            setChanged(edge.bounds)
+                        }
+                        KeyType.Backspace, KeyType.Delete -> {
+                            content = if (content.isNotEmpty()) content.substring(0, content.lastIndex) else ""
+                            setChanged(edge.bounds)
+                        }
+                        else -> Unit
+                    }
+                }
+            }))
         }
     )
 }
 
+private fun randomId(): Long = Random.nextLong().absoluteValue
+
 fun BoxContext.labelBox(label: String, color: TextColor, snapX: Float = 0.5f): Box {
-    return box("LabelBox", focus = noFocus) {
+    return box("LabelBox", {
         val labelBounds = edge.bounds.confine(label.length, 1, snapX)
         if (labelBounds.hits(col, row, glyphMinZ)) {
             setGlyph(label[labelBounds.leftInset(col)], color, labelBounds.z)
         }
-    }
+    }, focus = noFocus)
 }
 
-fun BoxContext.colorBox(color: TextColor): Box = box("ColorBox", focus = noFocus) {
-    if (edge.bounds.contains(col, row) && edge.bounds.z <= colorMinZ) {
+fun BoxContext.colorBox(color: TextColor?): Box = box("ColorBox", {
+    if (edge.bounds.contains(col, row) && edge.bounds.z <= colorMinZ && color != null) {
         setColor(color, edge.bounds.z)
     }
-}
+}, focus = noFocus)
 
 fun BoxContext.box(
     name: String,
-    focus: FocusScope.() -> Unit,
-    render: SpotScope.() -> Unit
+    render: SpotScope.() -> Unit,
+    focus: FocusScope.() -> Unit
 ): Box = object : Box, BoxContext by this {
     override val name: String = name
     override fun focus(focusScope: FocusScope) = focusScope.focus()
