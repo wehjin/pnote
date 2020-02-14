@@ -59,6 +59,7 @@ sealed class BrowseNotes(protected val offer: ((Any) -> Boolean)? = null) {
     fun cancel() = offer?.invoke(Cancel)
 
     class Importing(offer: (Any) -> Boolean, val substory: Story<ImportPasswordVision>) : BrowseNotes(offer)
+
     class Unlocking(offer: (Any) -> Boolean, val substory: Story<UnlockConfidential>) : BrowseNotes(offer)
 
     class Browsing(

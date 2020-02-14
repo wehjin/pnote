@@ -36,6 +36,11 @@ data class BoxBounds(
     fun inset(delta: Int): BoxBounds =
         copy(left = left + delta, right = right - delta, top = top + delta, bottom = bottom - delta)
 
+    fun partitionTop(height: Int): Pair<BoxBounds, BoxBounds> {
+        val middle = top + height
+        return partitionHeight(middle)
+    }
+
     fun partitionBottom(height: Int): Pair<BoxBounds, BoxBounds> {
         val middle = bottom - height
         return partitionHeight(middle)

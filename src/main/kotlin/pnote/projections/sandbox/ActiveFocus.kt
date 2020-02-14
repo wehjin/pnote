@@ -10,7 +10,7 @@ class ActiveFocus(private val channel: SendChannel<RenderAction>) {
     var focusId: Long? = null
     val focusables = mutableMapOf<Long, Focusable>()
 
-    fun update(box: Box, edge: BoxEdge) {
+    fun update(box: Box<*>, edge: BoxEdge) {
         focusables.clear()
         box.focus(object : FocusScope {
             override val edge: BoxEdge = edge

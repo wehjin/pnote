@@ -4,11 +4,14 @@
 package pnote
 
 import com.googlecode.lanterna.TextColor
+import com.rubyhuntersky.story.core.Story
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import pnote.projections.projectBrowseNotes
-import pnote.projections.sandbox.BoxContext
-import pnote.projections.sandbox.ColorSwatch
+import pnote.projections.sandbox.*
 import pnote.scopes.AppScope
+import pnote.stories.BrowseNotes
+import pnote.stories.UnlockConfidential
 import pnote.stories.browseNotes
 import pnote.tools.Cryptor
 import pnote.tools.FileNoteBag
@@ -30,25 +33,72 @@ fun main(args: Array<String>) {
     val commandName = "pnote$commandSuffix"
     val app = App(commandName)
     val story = app.browseNotes()
-
-
-    val projector = LineProjector()
-    val projection = projector.projectBrowseNotes(story)
-    runBlocking { projection.join() }
+    story.project(lanternaBoxScreen(), mainBoxContext())
 }
 
-class BoxProjector : BoxContext {
 
+fun Story<BrowseNotes>.project(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
+    val messageBox = messageBox("Pnotes", surfaceSwatch)
+    runBlocking {
+        for (vision in subscribe()) {
+            println("$name: $vision")
+            when (vision) {
+                is BrowseNotes.Unlocking -> vision.substory.projectUnlockConfidential(boxScreen, boxContext)
+                else -> {
+                    messageBox.setContent(vision.toString())
+                    boxScreen.setBox(messageBox)
+                }
+            }
+        }
+    }
+}
 
+fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
+    GlobalScope.launch {
+        for (vision in subscribe()) {
+            println("$name: $vision")
+            when (vision) {
+                is UnlockConfidential.Unlocking -> {
+                    var password = ""
+                    val errorBox = labelBox(
+                        text = if (vision.failCount > 0) "Invalid password" else "",
+                        textColor = primaryLightSwatch.color,
+                        snapX = 0f
+                    )
+                    val content = columnBox(
+                        1,
+                        labelBox("Enter Password", surfaceSwatch.glyphColor),
+                        gapBox(),
+                        inputBox {
+                            password = it
+                            errorBox.setContent("")
+                            boxScreen.refreshScreen()
+                        }.maxWidth(20),
+                        errorBox.maxWidth(20),
+                        gapBox(),
+                        buttonBox("Submit") { vision.setPassword(password) }
+                    )
+                    val box = content.before(fillBox(surfaceSwatch.color))
+                    boxScreen.setBox(box)
+                }
+                is UnlockConfidential.Finished -> Unit
+            }
+        }
+    }
+}
 
-    override val primarySwatch: ColorSwatch =
-        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x34, 0x49, 0x55))
-    override val primaryDarkSwatch: ColorSwatch =
-        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x23, 0x2f, 0x34))
-    override val primaryLightSwatch: ColorSwatch =
-        ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72))
-    override val surfaceSwatch: ColorSwatch =
-        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
-    override val secondarySwatch: ColorSwatch =
-        ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
+fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {
+    val context = object : BoxContext {
+        override val primarySwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x34, 0x49, 0x55))
+        override val primaryDarkSwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x23, 0x2f, 0x34))
+        override val primaryLightSwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72))
+        override val surfaceSwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
+        override val secondarySwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
+    }
+    return context.also { block?.invoke(it) }
 }

@@ -11,7 +11,7 @@ fun LineProjectorScope.projectUnlockConfidential(story: Story<UnlockConfidential
         when (vision) {
             is UnlockConfidential.Unlocking -> {
                 screenLine()
-                if (vision.invalidAttempt != null) {
+                if (vision.failCount > 0) {
                     screenError("Invalid password")
                 }
                 val passwordLine = promptLine("Enter password", "unlock-password")

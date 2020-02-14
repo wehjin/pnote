@@ -12,9 +12,9 @@ import pnote.tools.AccessLevel.ConfidentialUnlocked
 import pnote.tools.Password
 
 fun AppScope.unlockConfidential() = matchingStory<UnlockConfidential>(
-    name = "UnlockCurrentLevel",
+    name = "UnlockConfidential",
     isLastVision = { it is Finished },
-    toFirstVision = { Unlocking(offer, null) }
+    toFirstVision = { Unlocking(offer, 0) }
 ) {
     onAction<Cancel, UnlockConfidential> {
         Finished(true)
@@ -25,7 +25,7 @@ fun AppScope.unlockConfidential() = matchingStory<UnlockConfidential>(
         if (newAccessLevel is ConfidentialUnlocked) {
             Finished(false)
         } else {
-            Unlocking(offer, action.passwordLine)
+            Unlocking(offer, vision.failCount + 1)
         }
     }
 }
@@ -36,7 +36,7 @@ sealed class UnlockConfidential(private val offer: ((Any) -> Boolean)? = null) {
 
     class Unlocking(
         private val offer: (Any) -> Boolean,
-        val invalidAttempt: String?
+        val failCount: Int
     ) : UnlockConfidential(offer) {
         fun setPassword(passwordLine: String) = offer(SetPassword(passwordLine))
     }
