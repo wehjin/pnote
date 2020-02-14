@@ -28,7 +28,13 @@ fun FocusScope.withEdgeBounds(bounds: BoxBounds): FocusScope = object : FocusSco
 
 interface FocusScope {
     val edge: BoxEdge
+    fun setChanged(bounds: BoxBounds)
     fun setFocusable(focusable: Focusable)
+}
+
+interface FocusKeyScope {
+    val keyStroke: KeyStroke
+    val edge: BoxEdge
     fun setChanged(bounds: BoxBounds)
 }
 
@@ -40,5 +46,6 @@ data class Focusable(
 
 interface KeyReader {
     val readerId: Long
+    val handlesUpDown: Boolean
     fun receiveKey(keyStroke: KeyStroke)
 }

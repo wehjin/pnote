@@ -49,38 +49,26 @@ fun BoxContext.buttonBox(
         name = "ButtonBox",
         render = {
             val label = if (activeFocusId == focusableId) "[ $text ]" else "  $text  "
-            val stateSwatch = if (pressed) {
-                primarySwatch
-            } else {
-                swatch
-            }
+            val stateSwatch = if (pressed) primarySwatch else swatch
             labelBox(label, stateSwatch.strokeColor).before(fillBox(stateSwatch.fillColor))
                 .maxWidth(label.length, 0.5f)
                 .render(this)
-            if (activeFocusId == focusableId && edge.bounds.isTopLeftCorner(col, row)) {
-                setCursor(-1, -1)
-            }
         },
-        focus = {
-            setFocusable(Focusable(focusableId, edge.bounds, object : KeyReader {
-                override val readerId: Long = focusableId
-                override fun receiveKey(keyStroke: KeyStroke) {
-                    if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
-                        GlobalScope.launch {
-                            pressed = true
-                            setChanged(edge.bounds)
-                            delay(200)
-                            pressed = false
-                            setChanged(edge.bounds)
-                            delay(100)
-                            onPress()
-                        }
-                    }
-                }
-            }))
-        },
+        focus = noFocus,
         setContent = noContent
-    )
+    ).focusable(focusableId, noCursor, false) {
+        if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
+            GlobalScope.launch {
+                pressed = true
+                setChanged(edge.bounds)
+                delay(200)
+                pressed = false
+                setChanged(edge.bounds)
+                delay(100)
+                onPress()
+            }
+        }
+    }
 }
 
 fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
@@ -114,6 +102,7 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
         focus = {
             setFocusable(Focusable(focusableId, edge.bounds, object : KeyReader {
                 override val readerId: Long = focusableId
+                override val handlesUpDown: Boolean = false
                 override fun receiveKey(keyStroke: KeyStroke) {
                     val changed = when (keyStroke.keyType) {
                         KeyType.Character -> content + keyStroke.character.toString()
@@ -135,7 +124,7 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
     )
 }
 
-private fun randomId(): Long = Random.nextLong().absoluteValue
+fun randomId(): Long = Random.nextLong().absoluteValue
 
 fun BoxContext.labelBox(text: String, textColor: TextColor, snap: Snap = Snap.CENTER): Box<String> {
     var label: String = text

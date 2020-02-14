@@ -4,6 +4,7 @@
 package pnote
 
 import com.googlecode.lanterna.TextColor
+import com.googlecode.lanterna.input.KeyType
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -29,53 +30,90 @@ fun main(args: Array<String>) {
     val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
     val commandName = "pnote$commandSuffix"
     val app = App(commandName)
+    val boxScreen = lanternaBoxScreen()
     val story = app.browseNotes()
-    story.project(lanternaBoxScreen(), mainBoxContext())
+    story.project(boxScreen, mainBoxContext())
 }
 
 
 fun Story<BrowseNotes>.project(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
-    val messageBox = messageBox("Pnotes", surfaceSwatch)
     runBlocking {
-        for (vision in subscribe()) {
+        visionLoop@ for (vision in subscribe()) {
             println("$name: $vision")
             when (vision) {
+                BrowseNotes.Finished -> break@visionLoop
                 is BrowseNotes.Unlocking -> vision.substory.projectUnlockConfidential(boxScreen, boxContext)
                 is BrowseNotes.Browsing -> vision.projectBrowsing(boxScreen, boxContext)
-                else -> {
-                    messageBox.setContent(vision.toString())
-                    boxScreen.setBox(messageBox)
-                }
+                else -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
             }
         }
     }
+    boxScreen.close()
 }
 
 fun BrowseNotes.Browsing.projectBrowsing(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
-    val selected = 0
+    val items = banners.map { (it as Banner.Basic).title } + "Add Note"
     val pageSwatch = primaryDarkSwatch
     val pageTitle = labelBox("CONFIDENTIAL", pageSwatch.strokeColor, Snap.TOP_RIGHT).pad(1)
     val pageBackground = fillBox(pageSwatch.fillColor)
     val pageUnderlay = pageTitle.before(pageBackground)
-    val listSwatch = primarySwatch
-    val listUnderlay = fillBox(listSwatch.fillColor)
-    val listOverlay = when (banners.size) {
-        0 -> messageBox("Empty", listSwatch)
-        else -> {
-            val bannerBoxes = banners.mapIndexed { i, banner ->
-                banner as Banner.Basic
-                val swatch = if (i == selected) secondarySwatch else listSwatch
-                val title = labelBox(banner.title, swatch.strokeColor)
-                val divider = glyphBox('_', pageSwatch.fillColor)
-                val overlay = columnBox(1, Snap.TOP, gapBox(), title, divider)
-                overlay.before(fillBox(swatch.fillColor)).maxHeight(3, Snap.TOP)
+
+    var selectedItem = 0
+    val list = listBox(items) { selectedItem = it }
+    val focusId = randomId()
+    val activeList = list.focusable(focusId, noCursor, true) {
+        val listChanged = when (keyStroke.keyType) {
+            KeyType.ArrowDown -> true.also { list.setContent(ListMovement.Down) }
+            KeyType.ArrowUp -> true.also { list.setContent(ListMovement.Up) }
+            KeyType.Enter -> false.also {
+                when (selectedItem) {
+                    items.lastIndex -> addNote("Another note")
+                    else -> println("SELECTED ITEM: $selectedItem")
+                }
             }
-            columnBox(3, Snap.TOP, *bannerBoxes.toTypedArray())
+            KeyType.Escape -> false.also { cancel() }
+            else -> false
         }
+        if (listChanged) setChanged(edge.bounds)
     }
-    val list = listOverlay.before(listUnderlay)
-    val page = list.maxWidth(40).packTop(9, gapBox()).before(pageUnderlay)
+    val page = activeList.maxWidth(50).packTop(9, gapBox()).before(pageUnderlay)
     boxScreen.setBox(page)
+}
+
+enum class ListMovement { Up, Down }
+
+fun BoxContext.listBox(items: List<String>, onSelected: (Int) -> Unit): Box<ListMovement> {
+    var selected = 0.also { onSelected(it) }
+    return box(
+        name = "BannerBox",
+        render = {
+            val listSwatch = primarySwatch
+            val listUnderlay = fillBox(listSwatch.fillColor)
+            val listOverlay = when (items.size) {
+                0 -> messageBox("Empty", listSwatch)
+                else -> {
+                    val itemBoxes = items.mapIndexed { i, item ->
+                        val swatch = if (i == selected) secondarySwatch else listSwatch
+                        val title = labelBox(item, swatch.strokeColor)
+                        val divider = if (i == selected) gapBox() else glyphBox('_', primaryDarkSwatch.fillColor)
+                        val overlay = columnBox(1, Snap.TOP, gapBox(), title, divider)
+                        overlay.before(fillBox(swatch.fillColor)).maxHeight(3, Snap.TOP)
+                    }
+                    columnBox(3, Snap.TOP, *itemBoxes.toTypedArray())
+                }
+            }
+            listOverlay.before(listUnderlay).render(this)
+        },
+        focus = noFocus,
+        setContent = {
+            val oldSelected = selected
+            selected = when (it) {
+                ListMovement.Up -> if (selected > 0) selected - 1 else selected
+                ListMovement.Down -> if (selected < items.lastIndex) selected + 1 else selected
+            }
+            if (selected != oldSelected) GlobalScope.launch { onSelected(selected) }
+        }
+    )
 }
 
 fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {

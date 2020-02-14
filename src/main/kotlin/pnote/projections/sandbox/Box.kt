@@ -1,5 +1,7 @@
 package pnote.projections.sandbox
 
+import com.googlecode.lanterna.input.KeyStroke
+
 
 fun <T, U> Box<T>.packRight(width: Int, box: Box<U>): Box<Void> = box(
     name = "${this.name}|${box.name}",
@@ -99,9 +101,46 @@ fun <T> Box<T>.mapEdge(map: (edgeBounds: BoxBounds) -> BoxBounds): Box<T> = box(
     setContent = this::setContent
 )
 
+fun <T> Box<T>.focusable(
+    id: Long,
+    toCursorPosition: (BoxBounds) -> Pair<Int, Int>?,
+    requiresUpDown: Boolean,
+    onKey: FocusKeyScope.() -> Unit
+): Box<T> {
+    val edgeBox = this
+    return box(
+        name = name,
+        render = {
+            edgeBox.render(this)
+            if (activeFocusId == id && edge.bounds.isTopLeftCorner(col, row)) {
+                val (col, row) = toCursorPosition(edge.bounds) ?: Pair(-1, -1)
+                setCursor(col, row)
+            }
+        },
+        focus = {
+            val focusScope = this
+            setFocusable(Focusable(id, edge.bounds, object : KeyReader {
+                override val readerId: Long = id
+                override val handlesUpDown: Boolean = requiresUpDown
+                override fun receiveKey(keyStroke: KeyStroke) {
+                    val scope = object : FocusKeyScope {
+                        override val edge: BoxEdge by lazy { focusScope.edge }
+                        override val keyStroke: KeyStroke = keyStroke
+                        override fun setChanged(bounds: BoxBounds) = focusScope.setChanged(bounds)
+                    }
+                    scope.onKey()
+                }
+            }))
+        },
+        setContent = this::setContent
+    )
+}
+
 interface Box<in T> : BoxContext {
     val name: String
     fun render(spotScope: SpotScope)
     fun focus(focusScope: FocusScope)
     fun setContent(content: T)
 }
+
+val noCursor = { _: BoxBounds -> null }

@@ -52,11 +52,17 @@ class BoxScreen : BoxInitScope {
         }
     }
 
+    fun close() {
+        renderChannel.offer(RenderAction.Quit)
+    }
+
     fun onEnd(onCompletion: () -> Unit) {
         job.invokeOnCompletion { onCompletion() }
     }
 
-    fun joinBlocking() = runBlocking { job.join() }
+    fun joinBlocking() = runBlocking {
+        job.join()
+    }
 }
 
 fun lanternaBoxScreen() = BoxScreen()
