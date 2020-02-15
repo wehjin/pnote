@@ -49,12 +49,18 @@ private fun BoxContext.actionsRow(leftPadding: Int, boxScreen: BoxScreen, finish
         boxScreen.refreshScreen()
     }
     val editButton = buttonBox("Edit", buttonOptions) {
+        println("EDIT!")
+
+    }
+    val backButton = buttonBox("Back", buttonOptions) {
         finish()
     }
     val actionsOverlay = gapBox()
         .packLeft(13, copyButton)
         .packLeft(1, gapBox())
         .packLeft(8, editButton)
+        .packLeft(1, gapBox())
+        .packLeft(8, backButton)
         .packLeft(leftPadding, gapBox())
         .maxHeight(1)
     val actionsUnderlay = fillBox(primaryDarkSwatch.fillColor)
