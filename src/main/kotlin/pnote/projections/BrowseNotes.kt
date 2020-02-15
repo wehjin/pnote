@@ -6,7 +6,7 @@ import pnote.projections.sandbox.*
 import pnote.stories.BrowseNotes
 import pnote.tools.Banner
 
-fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>, boxScreen: BoxScreen) {
+fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>) {
     runBlocking {
         var subProjection: SubProjection? = null
         fun isSubProjection(name: String): Boolean = (subProjection?.name ?: "") == name
@@ -19,12 +19,12 @@ fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>, boxScreen: BoxScree
             println("${story.name}: $vision")
             when (vision) {
                 BrowseNotes.Finished -> break@visionLoop
-                is BrowseNotes.Unlocking -> projectUnlockConfidential(vision.substory, boxScreen)
+                is BrowseNotes.Unlocking -> projectUnlockConfidential(vision.substory)
                 is BrowseNotes.Browsing -> projectBrowsing(story, vision, boxScreen).also { clearSubProjection() }
                 is BrowseNotes.Importing -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
                 is BrowseNotes.AwaitingDetails ->
                     if (!isSubProjection(vision.substory.name)) {
-                        subProjection = projectNoteDetails(vision.substory, boxScreen)
+                        subProjection = projectNoteDetails(vision.substory)
                     }
             }
         }

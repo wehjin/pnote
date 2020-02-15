@@ -18,13 +18,12 @@ import pnote.tools.password
 fun main() {
     val app = App("pnote", "note-details-test")
     val story = app.noteDetailsStory(StringHandle("A Title"), password("hey"), 1)
-    lanternaBoxScreen().use { boxScreen ->
-        val subProjection = mainBoxContext().projectNoteDetails(story, boxScreen)
-        runBlocking { subProjection.job.join() }
-    }
+    val boxContext = mainBoxContext()
+    runBlocking { boxContext.projectNoteDetails(story).job.join() }
+    boxContext.boxScreen.close()
 }
 
-fun BoxContext.projectNoteDetails(story: Story<NoteDetails>, boxScreen: BoxScreen): SubProjection =
+fun BoxContext.projectNoteDetails(story: Story<NoteDetails>): SubProjection =
     SubProjection(story.name, GlobalScope.launch {
         visionLoop@ for (vision in story.subscribe()) {
             println("${story.name}: $vision")

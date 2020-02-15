@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 import pnote.projections.sandbox.*
 import pnote.stories.UnlockConfidential
 
-fun BoxContext.projectUnlockConfidential(story: Story<UnlockConfidential>, boxScreen: BoxScreen): Job {
+fun BoxContext.projectUnlockConfidential(story: Story<UnlockConfidential>): Job {
     return GlobalScope.launch {
         for (vision in story.subscribe()) {
             println("${story.name}: $vision")

@@ -6,6 +6,7 @@ package pnote
 import com.googlecode.lanterna.TextColor
 import pnote.projections.projectBrowseNotes
 import pnote.projections.sandbox.BoxContext
+import pnote.projections.sandbox.BoxScreen
 import pnote.projections.sandbox.ColorSwatch
 import pnote.projections.sandbox.lanternaBoxScreen
 import pnote.scopes.AppScope
@@ -33,14 +34,13 @@ fun main(args: Array<String>) {
     val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
     val commandName = "pnote$commandSuffix"
     val app = App(commandName, "main")
-    val boxScreen = lanternaBoxScreen()
     val story = app.browseNotesStory()
-    mainBoxContext().projectBrowseNotes(story, boxScreen)
+    mainBoxContext().projectBrowseNotes(story)
 }
-
 
 fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {
     val context = object : BoxContext {
+        override val boxScreen: BoxScreen = lanternaBoxScreen()
         override val surfaceSwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
         override val backgroundSwatch: ColorSwatch =
