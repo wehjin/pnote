@@ -10,6 +10,8 @@ data class BoxBounds(
     val width: Int get() = right - left
     val height: Int get() = bottom - top
 
+    val centerY: Int get() = top + height / 2
+
     fun contains(col: Int, row: Int): Boolean =
         col >= left && row >= top && col < right && row < bottom
 

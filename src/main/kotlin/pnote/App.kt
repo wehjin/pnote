@@ -61,7 +61,7 @@ fun BrowseNotes.Browsing.projectBrowsing(boxScreen: BoxScreen, boxContext: BoxCo
     var selectedItem = 0
     val list = listBox(items) { selectedItem = it }
     val focusId = randomId()
-    val activeList = list.focusable(focusId, noCursor, true) {
+    val activeList = list.focusable(focusId, true) {
         val listChanged = when (keyStroke.keyType) {
             KeyType.ArrowDown -> true.also { list.setContent(ListMovement.Down) }
             KeyType.ArrowUp -> true.also { list.setContent(ListMovement.Up) }

@@ -56,7 +56,7 @@ fun BoxContext.buttonBox(
         },
         focus = noFocus,
         setContent = noContent
-    ).focusable(focusableId, noCursor, false) {
+    ).focusable(focusableId, false) {
         if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
             GlobalScope.launch {
                 pressed = true
@@ -83,18 +83,17 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
             if (edge.bounds.hits(col, row, glyphMinZ)) {
                 val inset = edge.bounds.leftInset(col)
                 val maxContentLength = edge.bounds.width - 1
-                val displayContent = if (content.length > maxContentLength) {
-                    content.substring(content.length - maxContentLength)
+                val (displayContent, cursorX) = if (content.length > maxContentLength) {
+                    Pair(content.substring(content.length - maxContentLength), edge.bounds.right - 1)
                 } else {
-                    content
+                    Pair(content, edge.bounds.left + content.length)
                 }
                 if (inset < displayContent.length)
                     setGlyph(displayContent[inset], primaryLightSwatch.strokeColor, edge.bounds.z)
                 else {
                     setGlyph(' ', primaryLightSwatch.strokeColor, edge.bounds.z)
                 }
-                val cursorInset = displayContent.length
-                if (edge.bounds.isTopLeftCorner(col - cursorInset, row) && activeFocusId == focusableId) {
+                if (activeFocusId == focusableId && col == cursorX && row == edge.bounds.centerY) {
                     setCursor(col, row)
                 }
             }

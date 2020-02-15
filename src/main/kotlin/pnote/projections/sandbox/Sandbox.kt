@@ -77,6 +77,7 @@ private fun updateScreen(
     activeFocus.update(box, edge)
     runBlocking {
         screen.clear()
+        screen.cursorPosition = null
         edge.bounds.map { col, row ->
             launch {
                 val scope = ScreenSpot(screen, channel, edge, col, row, activeFocus.focusId ?: 0)
