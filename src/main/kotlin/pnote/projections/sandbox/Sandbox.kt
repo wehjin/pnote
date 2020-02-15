@@ -5,12 +5,13 @@ import com.googlecode.lanterna.screen.TerminalScreen
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
+import java.io.Closeable
 
 fun main() {
     LanternaProjector().start()
 }
 
-class BoxScreen : BoxInitScope {
+class BoxScreen : BoxInitScope, Closeable {
     private val renderChannel = Channel<RenderAction>(10)
     private var renderBox: Box<*>? = null
 
@@ -52,7 +53,7 @@ class BoxScreen : BoxInitScope {
         }
     }
 
-    fun close() {
+    override fun close() {
         renderChannel.offer(RenderAction.Quit)
     }
 

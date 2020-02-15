@@ -1,5 +1,6 @@
 package pnote.projections.sandbox
 
+import com.beust.klaxon.internal.firstNotNullResult
 import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.input.KeyStroke
 import com.googlecode.lanterna.input.KeyType
@@ -38,20 +39,33 @@ fun BoxContext.messageBox(message: String, swatch: ColorSwatch, snap: Snap = Sna
     )
 }
 
-fun BoxContext.buttonBox(
-    text: String,
-    swatch: ColorSwatch = surfaceSwatch,
-    onPress: () -> Unit
-): Box<Void> {
+sealed class BoxOption {
+    data class SwatchEnabled(val colorSwatch: ColorSwatch) : BoxOption()
+    data class SwatchPressed(val colorSwatch: ColorSwatch) : BoxOption()
+    data class SwatchFocused(val colorSwatch: ColorSwatch) : BoxOption()
+}
+
+val Set<BoxOption>.swatchEnabled get() = this.firstNotNullResult { (it as? BoxOption.SwatchEnabled) }?.colorSwatch
+val Set<BoxOption>.swatchPressed get() = this.firstNotNullResult { (it as? BoxOption.SwatchPressed) }?.colorSwatch
+val Set<BoxOption>.swatchFocused get() = this.firstNotNullResult { (it as? BoxOption.SwatchFocused) }?.colorSwatch
+
+fun BoxContext.buttonBox(text: String, options: Set<BoxOption>? = null, onPress: () -> Unit): Box<Void> {
+    val swatchEnabled = options?.swatchEnabled ?: surfaceSwatch
+    val swatchPressed = options?.swatchPressed ?: primarySwatch
+    val swatchFocused = options?.swatchFocused ?: primaryLightSwatch
     val focusableId = randomId()
     var pressed = false
     return box(
         name = "ButtonBox",
         render = {
-            val label = if (activeFocusId == focusableId) "[ $text ]" else "  $text  "
-            val stateSwatch = if (pressed) primarySwatch else swatch
-            labelBox(label, stateSwatch.strokeColor).before(fillBox(stateSwatch.fillColor))
-                .maxWidth(label.length, 0.5f)
+            val label = if (pressed) "\" $text \"" else " $text "
+            val swatch = when {
+                pressed -> swatchPressed
+                activeFocusId == focusableId -> swatchFocused
+                else -> swatchEnabled
+            }
+            labelBox(label, swatch.strokeColor)
+                .before(fillBox(swatch.fillColor).maxWidth(text.length + 2, 0.5f))
                 .render(this)
         },
         focus = noFocus,

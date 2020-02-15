@@ -16,10 +16,14 @@ import pnote.stories.browseNotes
 import pnote.tools.*
 import java.io.File
 
-class App(private val commandName: String) : AppScope {
-    private val homeDir = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
-    private val appDir = homeDir.let { home -> File(home, ".$commandName").apply { mkdirs() } }
-    private val userDir = appDir.let { app -> File(app, "main").apply { mkdirs() } }
+fun userDir(commandName: String, userName: String): File {
+    val homeDir = System.getProperty("user.home")!!.also { check(it.isNotBlank()) }
+    val appDir = homeDir.let { home -> File(home, ".$commandName").apply { mkdirs() } }
+    return appDir.let { app -> File(app, userName).apply { mkdirs() } }
+}
+
+class App(commandName: String, userName: String) : AppScope {
+    private val userDir = userDir(commandName, userName)
     override val cryptor: Cryptor = fileCryptor(userDir)
     override val noteBag: NoteBag = FileNoteBag(userDir, cryptor)
     override val logTag: String = commandName
@@ -28,7 +32,7 @@ class App(private val commandName: String) : AppScope {
 fun main(args: Array<String>) {
     val commandSuffix = args.getOrNull(0)?.let { "-debug" } ?: ""
     val commandName = "pnote$commandSuffix"
-    val app = App(commandName)
+    val app = App(commandName, "main")
     val boxScreen = lanternaBoxScreen()
     val story = app.browseNotes()
     story.project(boxScreen, mainBoxContext())

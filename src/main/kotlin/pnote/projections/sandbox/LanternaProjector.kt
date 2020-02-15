@@ -32,7 +32,10 @@ class LanternaProjector : BoxContext {
     fun start() = BoxScreen().apply {
         val passwordInput = inputBox()
         val checkInput = inputBox()
-        val importButton = buttonBox("Import", secondarySwatch) { endProjection() }
+        val importButton = buttonBox(
+            "Import",
+            setOf(BoxOption.SwatchEnabled(secondarySwatch))
+        ) { endProjection() }
         val inputCluster = passwordInput
             .packBottom(1, fillBox(null))
             .packBottom(1, checkInput)
