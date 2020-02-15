@@ -1,27 +1,37 @@
 package pnote.projections
 
 import com.rubyhuntersky.story.core.Story
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import pnote.scopes.LineProjectorScope
+import pnote.projections.sandbox.*
 import pnote.stories.UnlockConfidential
 
-
-fun LineProjectorScope.projectUnlockConfidential(story: Story<UnlockConfidential>) = launch {
-    visionLoop@ for (vision in story.subscribe()) {
-        when (vision) {
-            is UnlockConfidential.Unlocking -> {
-                screenLine()
-                if (vision.failCount > 0) {
-                    screenError("Invalid password")
+fun BoxContext.projectUnlockConfidential(story: Story<UnlockConfidential>, boxScreen: BoxScreen): Job {
+    return GlobalScope.launch {
+        for (vision in story.subscribe()) {
+            println("${story.name}: $vision")
+            when (vision) {
+                is UnlockConfidential.Unlocking -> {
+                    var password = ""
+                    val errorBox = labelBox(
+                        text = if (vision.failCount > 0) "Invalid password" else "",
+                        textColor = primaryLightSwatch.fillColor,
+                        snap = Snap(0f, 0.5f)
+                    )
+                    val content = columnBox(1, Snap.CENTER,
+                        labelBox("Enter Password", surfaceSwatch.strokeColor),
+                        gapBox(),
+                        inputBox { password = it; errorBox.setContent(""); boxScreen.refreshScreen() }.maxWidth(20),
+                        errorBox.maxWidth(20),
+                        gapBox(),
+                        buttonBox("Submit") { vision.setPassword(password) }
+                    )
+                    val box = content.before(fillBox(surfaceSwatch.fillColor))
+                    boxScreen.setBox(box)
                 }
-                val passwordLine = promptLine("Enter password", "unlock-password")
-                if (passwordLine.isBlank()) {
-                    vision.cancel()
-                } else {
-                    vision.setPassword(passwordLine)
-                }
+                is UnlockConfidential.Finished -> Unit
             }
-            is UnlockConfidential.Finished -> break@visionLoop
         }
     }
 }

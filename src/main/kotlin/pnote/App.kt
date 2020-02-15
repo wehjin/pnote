@@ -4,16 +4,11 @@
 package pnote
 
 import com.googlecode.lanterna.TextColor
-import com.rubyhuntersky.story.core.Story
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import pnote.projections.projectBrowsing
-import pnote.projections.sandbox.*
+import pnote.projections.projectBrowseNotes
+import pnote.projections.sandbox.BoxContext
+import pnote.projections.sandbox.ColorSwatch
+import pnote.projections.sandbox.lanternaBoxScreen
 import pnote.scopes.AppScope
-import pnote.stories.BrowseNotes
-import pnote.stories.UnlockConfidential
 import pnote.stories.browseNotes
 import pnote.tools.Cryptor
 import pnote.tools.FileNoteBag
@@ -43,50 +38,6 @@ fun main(args: Array<String>) {
     mainBoxContext().projectBrowseNotes(story, boxScreen)
 }
 
-
-fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>, boxScreen: BoxScreen) {
-    runBlocking {
-        visionLoop@ for (vision in story.subscribe()) {
-            println("${story.name}: $vision")
-            when (vision) {
-                BrowseNotes.Finished -> break@visionLoop
-                is BrowseNotes.Unlocking -> projectUnlockConfidential(vision.substory, boxScreen)
-                is BrowseNotes.Browsing -> projectBrowsing(vision, boxScreen)
-                else -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
-            }
-        }
-    }
-    boxScreen.close()
-}
-
-fun BoxContext.projectUnlockConfidential(story: Story<UnlockConfidential>, boxScreen: BoxScreen): Job {
-    return GlobalScope.launch {
-        for (vision in story.subscribe()) {
-            println("${story.name}: $vision")
-            when (vision) {
-                is UnlockConfidential.Unlocking -> {
-                    var password = ""
-                    val errorBox = labelBox(
-                        text = if (vision.failCount > 0) "Invalid password" else "",
-                        textColor = primaryLightSwatch.fillColor,
-                        snap = Snap(0f, 0.5f)
-                    )
-                    val content = columnBox(1, Snap.CENTER,
-                        labelBox("Enter Password", surfaceSwatch.strokeColor),
-                        gapBox(),
-                        inputBox { password = it; errorBox.setContent(""); boxScreen.refreshScreen() }.maxWidth(20),
-                        errorBox.maxWidth(20),
-                        gapBox(),
-                        buttonBox("Submit") { vision.setPassword(password) }
-                    )
-                    val box = content.before(fillBox(surfaceSwatch.fillColor))
-                    boxScreen.setBox(box)
-                }
-                is UnlockConfidential.Finished -> Unit
-            }
-        }
-    }
-}
 
 fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {
     val context = object : BoxContext {
