@@ -6,14 +6,19 @@ package pnote
 import com.googlecode.lanterna.TextColor
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import pnote.projections.projectBrowsing
 import pnote.projections.sandbox.*
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes
 import pnote.stories.UnlockConfidential
 import pnote.stories.browseNotes
-import pnote.tools.*
+import pnote.tools.Cryptor
+import pnote.tools.FileNoteBag
+import pnote.tools.NoteBag
+import pnote.tools.fileCryptor
 import java.io.File
 
 fun userDir(commandName: String, userName: String): File {
@@ -35,18 +40,18 @@ fun main(args: Array<String>) {
     val app = App(commandName, "main")
     val boxScreen = lanternaBoxScreen()
     val story = app.browseNotes()
-    story.project(boxScreen, mainBoxContext())
+    mainBoxContext().projectBrowseNotes(story, boxScreen)
 }
 
 
-fun Story<BrowseNotes>.project(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
+fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>, boxScreen: BoxScreen) {
     runBlocking {
-        visionLoop@ for (vision in subscribe()) {
-            println("$name: $vision")
+        visionLoop@ for (vision in story.subscribe()) {
+            println("${story.name}: $vision")
             when (vision) {
                 BrowseNotes.Finished -> break@visionLoop
-                is BrowseNotes.Unlocking -> vision.substory.projectUnlockConfidential(boxScreen, boxContext)
-                is BrowseNotes.Browsing -> vision.projectBrowsing(boxScreen, boxContext)
+                is BrowseNotes.Unlocking -> projectUnlockConfidential(vision.substory, boxScreen)
+                is BrowseNotes.Browsing -> projectBrowsing(vision, boxScreen)
                 else -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
             }
         }
@@ -54,32 +59,14 @@ fun Story<BrowseNotes>.project(boxScreen: BoxScreen, boxContext: BoxContext) = b
     boxScreen.close()
 }
 
-fun BrowseNotes.Browsing.projectBrowsing(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
-    val pageSwatch = primaryDarkSwatch
-    val pageTitle = labelBox("CONFIDENTIAL", pageSwatch.strokeColor, Snap.TOP_RIGHT).pad(1)
-    val pageBackground = fillBox(pageSwatch.fillColor)
-    val pageUnderlay = pageTitle.before(pageBackground)
-
-    val items = banners.map { (it as Banner.Basic).title } + "Add Note"
-    val itemList = listBox(items) { index ->
-        when (index) {
-            0 -> cancel()
-            items.lastIndex -> addNote("Another note")
-            else -> println("SELECTED ITEM: ${index + 1}")
-        }
-    }
-    val page = itemList.maxWidth(50).before(pageUnderlay)
-    boxScreen.setBox(page)
-}
-
-fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
-    GlobalScope.launch {
-        for (vision in subscribe()) {
-            println("$name: $vision")
+fun BoxContext.projectUnlockConfidential(story: Story<UnlockConfidential>, boxScreen: BoxScreen): Job {
+    return GlobalScope.launch {
+        for (vision in story.subscribe()) {
+            println("${story.name}: $vision")
             when (vision) {
                 is UnlockConfidential.Unlocking -> {
                     var password = ""
-                    val errorBox = this@run.labelBox(
+                    val errorBox = labelBox(
                         text = if (vision.failCount > 0) "Invalid password" else "",
                         textColor = primaryLightSwatch.fillColor,
                         snap = Snap(0f, 0.5f)
@@ -87,11 +74,7 @@ fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, bo
                     val content = columnBox(1, Snap.CENTER,
                         labelBox("Enter Password", surfaceSwatch.strokeColor),
                         gapBox(),
-                        inputBox {
-                            password = it
-                            errorBox.setContent("")
-                            boxScreen.refreshScreen()
-                        }.maxWidth(20),
+                        inputBox { password = it; errorBox.setContent(""); boxScreen.refreshScreen() }.maxWidth(20),
                         errorBox.maxWidth(20),
                         gapBox(),
                         buttonBox("Submit") { vision.setPassword(password) }

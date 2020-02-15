@@ -1,38 +1,23 @@
 package pnote.projections
 
-import com.rubyhuntersky.story.core.Story
-import kotlinx.coroutines.launch
-import pnote.scopes.LineProjectorScope
+import pnote.projections.sandbox.*
 import pnote.stories.BrowseNotes
-import pnote.stories.BrowseNotes.*
 import pnote.tools.Banner
 
-fun LineProjectorScope.projectBrowseNotes(story: Story<BrowseNotes>) = launch {
-    visionLoop@ for (vision in story.subscribe()) {
-        when (vision) {
-            is Importing -> projectImportPassword(vision.substory)
-            is Unlocking -> projectUnlockConfidential(vision.substory)
-            is Browsing -> projectBrowsing(vision)
-            Finished -> break@visionLoop
+fun BoxContext.projectBrowsing(browsing: BrowseNotes.Browsing, boxScreen: BoxScreen) {
+    val pageSwatch = primaryDarkSwatch
+    val pageTitle = labelBox("CONFIDENTIAL", pageSwatch.strokeColor, Snap.TOP_RIGHT).pad(1)
+    val pageBackground = fillBox(pageSwatch.fillColor)
+    val pageUnderlay = pageTitle.before(pageBackground)
+
+    val items = browsing.banners.map { (it as Banner.Basic).title } + "Add Note"
+    val itemList = listBox(items) { index ->
+        when (index) {
+            0 -> browsing.cancel()
+            items.lastIndex -> browsing.addNote("Another note")
+            else -> println("SELECTED ITEM: ${index + 1}")
         }
     }
+    val page = itemList.maxWidth(50).before(pageUnderlay)
+    boxScreen.setBox(page)
 }
-
-private fun LineProjectorScope.projectBrowsing(vision: Browsing) {
-    screenLine()
-    vision.banners.forEachIndexed { i, banner ->
-        banner as Banner.Basic
-        val message = banner.title
-        screenLine("${i + 1}:\u2002$message")
-    }
-    commandLoop@ for (line in generateSequence { promptLine("CONFIDENTIAL", "command") }) {
-        val endLoop = when (val command = command(line)) {
-            "", "done", "quit", "exit", "lock", "bye" -> true.also { vision.cancel() }
-            "add" -> true.also { vision.addNote(line.substring(command.length)) }
-            else -> false.also { screenError("Hmm. I fail to understand the significance of this command '$line'") }
-        }
-        if (endLoop) break@commandLoop
-    }
-}
-
-private fun command(line: String): String = line.split(" ").firstOrNull()?.trim() ?: ""
