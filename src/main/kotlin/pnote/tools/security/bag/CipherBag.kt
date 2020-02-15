@@ -1,5 +1,12 @@
+@file:Suppress("EXPERIMENTAL_API_USAGE")
+
 package pnote.tools.security.bag
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import pnote.tools.security.item.*
 import java.io.File
 import java.io.FileFilter
@@ -10,26 +17,45 @@ class CipherBag(dir: File) {
 
     fun <T : Any> values(password: CharArray, itemType: ItemType<T>) = map(password, itemType) { plainValue }
 
-    fun <T : Any, R : Any> mapOrNull(
+    private fun <T : Any, R : Any> mapOrNull(
         itemId: String,
         password: CharArray,
         itemType: ItemType<T>,
         block: ItemVisitScope<T>.() -> R
     ): R? = cipherItem(itemId)?.map(password, itemType, block)
 
-    fun <T : Any, R : Any> map(password: CharArray, itemType: ItemType<T>, block: ItemVisitScope<T>.() -> R): Set<R> =
-        itemsDir.listFiles(itemFileFilter)!!.mapNotNull {
-            try {
-                CipherItem(it).map(password, itemType, block)
-            } catch (e: Throwable) {
-                null
+    fun <T : Any, R : Any> map(
+        password: CharArray,
+        itemType: ItemType<T>,
+        block: ItemVisitScope<T>.() -> R
+    ): Set<R> {
+        val itemFiles = itemsDir.listFiles(itemFileFilter)!!
+        val values = mutableListOf<R>()
+        runBlocking {
+            val results = Channel<R?>(itemFiles.size)
+            val jobs = itemFiles.map {
+                GlobalScope.launch(Dispatchers.IO) {
+                    val result = try {
+                        CipherItem(it).map(password, itemType, block)
+                    } catch (e: Throwable) {
+                        null
+                    }
+                    results.send(result)
+                }
             }
-        }.toSet()
+            repeat(jobs.size) {
+                val result = results.receive()
+                if (result != null) values.add(result)
+            }
+        }
+        return values.toSet()
+    }
 
     fun <T : Any> add(password: CharArray, itemType: ItemType<T>, value: T, id: String? = null): String {
         val cipherItem = cipherItem(itemsDir, password, plainItem(value, itemType, id))
         return cipherItem.id
     }
+
 
     fun <T : Any> replace(id: String, password: CharArray, itemType: ItemType<T>, value: T): String {
         return add(password, itemType, value).also {
