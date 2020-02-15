@@ -66,7 +66,7 @@ private fun BoxContext.passiveList(items: List<String>, onSelected: (Int) -> Uni
             when (items.size) {
                 0 -> messageBox("Empty", normalSwatch)
                 else -> {
-                    val levelBoxes = (0 until maxLevels).map { level ->
+                    val levelBoxes = (-1 until (maxLevels + 1)).map { level ->
                         val i = topIndex + level
                         when {
                             i < 0 -> gapBox()
