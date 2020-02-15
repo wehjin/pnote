@@ -11,10 +11,11 @@ import kotlin.math.absoluteValue
 import kotlin.random.Random
 
 interface BoxContext {
+    val backgroundSwatch: ColorSwatch
+    val surfaceSwatch: ColorSwatch
     val primarySwatch: ColorSwatch
     val primaryLightSwatch: ColorSwatch
     val primaryDarkSwatch: ColorSwatch
-    val surfaceSwatch: ColorSwatch
     val secondarySwatch: ColorSwatch
 }
 

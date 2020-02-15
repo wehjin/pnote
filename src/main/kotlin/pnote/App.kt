@@ -107,14 +107,16 @@ fun Story<UnlockConfidential>.projectUnlockConfidential(boxScreen: BoxScreen, bo
 
 fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {
     val context = object : BoxContext {
+        override val surfaceSwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
+        override val backgroundSwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x12, 0x12, 0x12))
         override val primarySwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x34, 0x49, 0x55))
         override val primaryDarkSwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x23, 0x2f, 0x34))
         override val primaryLightSwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72))
-        override val surfaceSwatch: ColorSwatch =
-            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
         override val secondarySwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
     }

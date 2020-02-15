@@ -2,6 +2,7 @@ package pnote.projections
 
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pnote.App
@@ -18,22 +19,21 @@ fun main() {
     val app = App("pnote", "note-details-test")
     val story = app.noteDetailsStory()
     lanternaBoxScreen().use { boxScreen ->
-        val boxContext = mainBoxContext()
-        val job = story.projectNoteDetails(boxScreen, boxContext)
+        val job = mainBoxContext().projectNoteDetails(story, boxScreen)
         runBlocking { job.join() }
     }
 }
 
-fun Story<NoteDetails>.projectNoteDetails(boxScreen: BoxScreen, boxContext: BoxContext) = boxContext.run {
+fun BoxContext.projectNoteDetails(story: Story<NoteDetails>, boxScreen: BoxScreen): Job = run {
     GlobalScope.launch {
-        visionLoop@ for (vision in subscribe()) {
-            println("$name: $vision")
+        visionLoop@ for (vision in story.subscribe()) {
+            println("${story.name}: $vision")
             when (vision) {
                 is Viewing -> {
                     val leftPadding = 15
                     val descriptionRow = descriptionRow(leftPadding)
-                    val actionsRow = actionsRow(leftPadding, boxScreen) { offer(vision.cancel) }
-                    val headerRow = fillBox(surfaceSwatch.fillColor)
+                    val actionsRow = actionsRow(leftPadding, boxScreen) { story.offer(vision.cancel) }
+                    val headerRow = fillBox(backgroundSwatch.fillColor)
                     val pageBox = descriptionRow.packTop(3, actionsRow).packTop(10, headerRow)
                     boxScreen.setBox(pageBox)
                 }

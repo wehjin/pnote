@@ -3,6 +3,16 @@ package pnote.projections.sandbox
 import com.googlecode.lanterna.TextColor
 
 class LanternaProjector : BoxContext {
+    override val surfaceSwatch: ColorSwatch =
+        ColorSwatch(
+            TextColor.ANSI.BLACK,
+            TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF)
+        )
+    override val backgroundSwatch: ColorSwatch =
+        ColorSwatch(
+            TextColor.ANSI.BLACK,
+            TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF)
+        )
     override val primarySwatch: ColorSwatch =
         ColorSwatch(
             TextColor.ANSI.WHITE,
@@ -17,11 +27,6 @@ class LanternaProjector : BoxContext {
         ColorSwatch(
             TextColor.ANSI.WHITE,
             TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72)
-        )
-    override val surfaceSwatch: ColorSwatch =
-        ColorSwatch(
-            TextColor.ANSI.BLACK,
-            TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF)
         )
     override val secondarySwatch: ColorSwatch =
         ColorSwatch(
