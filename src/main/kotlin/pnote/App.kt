@@ -42,7 +42,7 @@ fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {
     val context = object : BoxContext {
         override val boxScreen: BoxScreen = lanternaBoxScreen()
         override val surfaceSwatch: ColorSwatch =
-            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xFF, 0xFF, 0xFF))
+            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x36, 0x36, 0x40))
         override val backgroundSwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x12, 0x12, 0x12))
         override val primarySwatch: ColorSwatch =
