@@ -40,11 +40,11 @@ internal class BrowseNotesKtTest {
     @Test
     internal fun `empty cryptor starts story with importing`() {
         appScope.cryptor = memCryptor(null)
-        val story = appScope.browseNotes()
+        val story = appScope.browseNotesStory()
         runBlocking {
             val importing = story.scan(500) { it as? Importing }
 
-            importing.cancel()
+            story.offer(importing.cancel())
             story.scan(500) { it as? Finished }
         }
     }
@@ -52,11 +52,11 @@ internal class BrowseNotesKtTest {
     @Test
     internal fun `locked cryptor starts story with unlocking`() {
         appScope.cryptor = memCryptor(password("1234"))
-        val story = appScope.browseNotes()
+        val story = appScope.browseNotesStory()
         runBlocking {
             val unlocking = story.scan(500) { it as? Unlocking }
 
-            unlocking.cancel()
+            story.offer(unlocking.cancel())
             story.scan(500) { it as? Finished }
         }
     }
@@ -64,12 +64,12 @@ internal class BrowseNotesKtTest {
     @Test
     internal fun `unlocked cryptor starts story with browsing`() {
         appScope.cryptor = memCryptor(password("1234"), password("1234"))
-        val story = appScope.browseNotes()
+        val story = appScope.browseNotesStory()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }
             assertEquals(bannerSet, browsing.banners)
 
-            browsing.cancel()
+            story.offer(browsing.cancel())
             story.scan(500) { it as? Finished }
         }
     }
@@ -77,12 +77,12 @@ internal class BrowseNotesKtTest {
     @Test
     internal fun `offering an add-note action from browsing adds a note to the bag`() {
         appScope.cryptor = memCryptor(password("1234"), password("1234"))
-        val story = appScope.browseNotes()
+        val story = appScope.browseNotesStory()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }
             assertEquals(bannerSet, browsing.banners)
 
-            browsing.addNote("Adios")
+            story.offer(browsing.addNote("Adios"))
             val browsing2 = story.scan(500) { vision ->
                 (vision as? Browsing)?.let { if (it.banners.size > 1) it else null }
             }

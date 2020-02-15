@@ -6,6 +6,7 @@ import com.rubyhuntersky.story.core.scopes.StoryInitScope
 import com.rubyhuntersky.story.core.scopes.offerWhenStoryEnds
 import com.rubyhuntersky.story.core.scopes.on
 import com.rubyhuntersky.story.core.scopes.onAction
+import pnote.projections.StringHandle
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes.*
 import pnote.stories.BrowseNotesAction.*
@@ -14,7 +15,7 @@ import pnote.tools.Banner
 import pnote.tools.Note
 import pnote.tools.Password
 
-fun AppScope.browseNotes(): Story<BrowseNotes> = matchingStory(
+fun AppScope.browseNotesStory(): Story<BrowseNotes> = matchingStory(
     name = "BrowseNotes",
     isLastVision = { it is Finished },
     toFirstVision = { init(this) },
@@ -29,6 +30,17 @@ fun AppScope.browseNotes(): Story<BrowseNotes> = matchingStory(
             noteBag.addNote(vision.password, Note.Basic(action.title))
             init(this)
         }
+        on<ViewNote, BrowseNotes, Browsing> {
+            val banner = vision.banners.firstOrNull { it.noteId == action.noteId } as? Banner.Basic
+            if (banner == null) {
+                vision
+            } else {
+                val title = StringHandle(banner.title.trim())
+                val substory = noteDetailsStory(title, vision.password, action.noteId)
+                whenSubstoryEnds(substory) { offer(Reload) }
+                AwaitingDetails(substory)
+            }
+        }
     }
 )
 
@@ -37,7 +49,7 @@ private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNo
         when (accessLevel) {
             Empty -> {
                 val substory = importPassword().also { storyInitScope.offerWhenStoryEnds(it) { Reload } }
-                Importing(storyInitScope.offer, substory)
+                Importing(substory)
             }
             ConfidentialLocked -> {
                 val substory = unlockConfidential().also {
@@ -46,35 +58,28 @@ private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNo
                         if (unlockWasCancelled) Cancel else Reload
                     }
                 }
-                Unlocking(storyInitScope.offer, substory)
+                Unlocking(substory)
             }
-            is ConfidentialUnlocked -> {
-                Browsing(storyInitScope.offer, accessLevel.password, banners)
-            }
+            is ConfidentialUnlocked -> Browsing(accessLevel.password, banners)
         }
     }
 
-sealed class BrowseNotes(protected val offer: ((Any) -> Boolean)? = null) {
-
-    fun cancel() = offer?.invoke(Cancel)
-
-    class Importing(offer: (Any) -> Boolean, val substory: Story<ImportPasswordVision>) : BrowseNotes(offer)
-
-    class Unlocking(offer: (Any) -> Boolean, val substory: Story<UnlockConfidential>) : BrowseNotes(offer)
-
-    class Browsing(
-        offer: (Any) -> Boolean,
-        val password: Password,
-        val banners: Set<Banner>
-    ) : BrowseNotes(offer) {
-        fun addNote(title: String) = offer?.invoke(AddNote(title))
+sealed class BrowseNotes() {
+    class Importing(val substory: Story<ImportPasswordVision>) : BrowseNotes()
+    data class Unlocking(val substory: Story<UnlockConfidential>) : BrowseNotes()
+    data class AwaitingDetails(val substory: Story<NoteDetails>) : BrowseNotes()
+    object Finished : BrowseNotes()
+    class Browsing(val password: Password, val banners: Set<Banner>) : BrowseNotes() {
+        fun addNote(title: String): Any = AddNote(title)
+        fun viewNote(noteId: Long): Any = ViewNote(noteId)
     }
 
-    object Finished : BrowseNotes()
+    fun cancel(): Any = Cancel
 }
 
 private sealed class BrowseNotesAction {
     object Cancel : BrowseNotesAction()
     object Reload : BrowseNotesAction()
     data class AddNote(val title: String) : BrowseNotesAction()
+    data class ViewNote(val noteId: Long) : BrowseNotesAction()
 }

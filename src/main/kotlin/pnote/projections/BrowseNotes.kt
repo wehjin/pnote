@@ -8,31 +8,42 @@ import pnote.tools.Banner
 
 fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>, boxScreen: BoxScreen) {
     runBlocking {
+        var subProjection: SubProjection? = null
+        fun isSubProjection(name: String): Boolean = (subProjection?.name ?: "") == name
+        fun clearSubProjection(name: String? = null) {
+            if (name == null || subProjection?.name == name) {
+                subProjection = null
+            }
+        }
         visionLoop@ for (vision in story.subscribe()) {
             println("${story.name}: $vision")
             when (vision) {
                 BrowseNotes.Finished -> break@visionLoop
                 is BrowseNotes.Unlocking -> projectUnlockConfidential(vision.substory, boxScreen)
-                is BrowseNotes.Browsing -> projectBrowsing(vision, boxScreen)
-                else -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
+                is BrowseNotes.Browsing -> projectBrowsing(story, vision, boxScreen).also { clearSubProjection() }
+                is BrowseNotes.Importing -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
+                is BrowseNotes.AwaitingDetails ->
+                    if (!isSubProjection(vision.substory.name)) {
+                        subProjection = projectNoteDetails(vision.substory, boxScreen)
+                    }
             }
         }
     }
     boxScreen.close()
 }
 
-fun BoxContext.projectBrowsing(browsing: BrowseNotes.Browsing, boxScreen: BoxScreen) {
+fun BoxContext.projectBrowsing(story: Story<BrowseNotes>, browsing: BrowseNotes.Browsing, boxScreen: BoxScreen) {
     val pageSwatch = primaryDarkSwatch
     val pageTitle = labelBox("CONFIDENTIAL", pageSwatch.strokeColor, Snap.TOP_RIGHT).pad(1)
     val pageBackground = fillBox(pageSwatch.fillColor)
     val pageUnderlay = pageTitle.before(pageBackground)
 
-    val items = browsing.banners.map { (it as Banner.Basic).title } + "Add Note"
+    val banners = browsing.banners.toList()
+    val items = banners.map { (it as Banner.Basic).title } + "Add Note"
     val itemList = listBox(items) { index ->
         when (index) {
-            0 -> browsing.cancel()
-            items.lastIndex -> browsing.addNote("Another note")
-            else -> println("SELECTED ITEM: ${index + 1}")
+            items.lastIndex -> story.offer(browsing.addNote("Another note"))
+            else -> story.offer(browsing.viewNote(noteId = banners[index].noteId))
         }
     }
     val page = itemList.maxWidth(50).before(pageUnderlay)

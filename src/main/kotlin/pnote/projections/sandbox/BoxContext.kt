@@ -140,8 +140,8 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
 
 fun randomId(): Long = Random.nextLong().absoluteValue
 
-fun BoxContext.labelBox(text: String, textColor: TextColor, snap: Snap = Snap.CENTER): Box<String> {
-    var label: String = text
+fun BoxContext.labelBox(text: CharSequence, textColor: TextColor, snap: Snap = Snap.CENTER): Box<String> {
+    var label: CharSequence = text
     return box(
         name = "LabelBox",
         render = {

@@ -2,7 +2,6 @@ package pnote.projections
 
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pnote.App
@@ -14,24 +13,25 @@ import pnote.stories.NoteDetails
 import pnote.stories.NoteDetails.FinishedViewing
 import pnote.stories.NoteDetails.Viewing
 import pnote.stories.noteDetailsStory
+import pnote.tools.password
 
 fun main() {
     val app = App("pnote", "note-details-test")
-    val story = app.noteDetailsStory()
+    val story = app.noteDetailsStory(StringHandle("A Title"), password("hey"), 1)
     lanternaBoxScreen().use { boxScreen ->
-        val job = mainBoxContext().projectNoteDetails(story, boxScreen)
-        runBlocking { job.join() }
+        val subProjection = mainBoxContext().projectNoteDetails(story, boxScreen)
+        runBlocking { subProjection.job.join() }
     }
 }
 
-fun BoxContext.projectNoteDetails(story: Story<NoteDetails>, boxScreen: BoxScreen): Job = run {
-    GlobalScope.launch {
+fun BoxContext.projectNoteDetails(story: Story<NoteDetails>, boxScreen: BoxScreen): SubProjection =
+    SubProjection(story.name, GlobalScope.launch {
         visionLoop@ for (vision in story.subscribe()) {
             println("${story.name}: $vision")
             when (vision) {
                 is Viewing -> {
                     val leftPadding = 15
-                    val descriptionRow = descriptionRow(leftPadding)
+                    val descriptionRow = descriptionRow(vision.title.toCharSequence(), leftPadding)
                     val actionsRow = actionsRow(leftPadding, boxScreen) { story.offer(vision.cancel) }
                     val headerRow = fillBox(backgroundSwatch.fillColor)
                     val pageBox = descriptionRow.packTop(3, actionsRow).packTop(10, headerRow)
@@ -40,8 +40,7 @@ fun BoxContext.projectNoteDetails(story: Story<NoteDetails>, boxScreen: BoxScree
                 is FinishedViewing -> break@visionLoop
             }
         }
-    }
-}
+    })
 
 private fun BoxContext.actionsRow(leftPadding: Int, boxScreen: BoxScreen, finish: () -> Unit): Box<Void> {
     val buttonOptions = setOf(SwatchEnabled(primarySwatch), SwatchPressed(primaryLightSwatch))
@@ -62,8 +61,8 @@ private fun BoxContext.actionsRow(leftPadding: Int, boxScreen: BoxScreen, finish
     return actionsOverlay.before(actionsUnderlay)
 }
 
-private fun BoxContext.descriptionRow(leftPadding: Int): Box<Void> {
-    val titleBox = labelBox("Title of the note", primarySwatch.strokeColor, Snap.LEFT)
+private fun BoxContext.descriptionRow(title: CharSequence, leftPadding: Int): Box<Void> {
+    val titleBox = labelBox(title, primarySwatch.strokeColor, Snap.LEFT)
     val contentBox =
         labelBox("This is the content of this note", primarySwatch.strokeColor, Snap.TOP_LEFT)
     val descriptionOverlay = contentBox.packTop(3, titleBox).packLeft(leftPadding, gapBox())

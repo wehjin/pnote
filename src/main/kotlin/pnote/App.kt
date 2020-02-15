@@ -9,7 +9,7 @@ import pnote.projections.sandbox.BoxContext
 import pnote.projections.sandbox.ColorSwatch
 import pnote.projections.sandbox.lanternaBoxScreen
 import pnote.scopes.AppScope
-import pnote.stories.browseNotes
+import pnote.stories.browseNotesStory
 import pnote.tools.Cryptor
 import pnote.tools.FileNoteBag
 import pnote.tools.NoteBag
@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
     val commandName = "pnote$commandSuffix"
     val app = App(commandName, "main")
     val boxScreen = lanternaBoxScreen()
-    val story = app.browseNotes()
+    val story = app.browseNotesStory()
     mainBoxContext().projectBrowseNotes(story, boxScreen)
 }
 
