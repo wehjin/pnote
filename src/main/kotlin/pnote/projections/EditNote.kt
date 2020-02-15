@@ -33,57 +33,58 @@ fun BoxContext.projectEditNote(): SubProjection {
     })
 }
 
-class TextEditor {
-    private var width: Int = 0
-    private var height: Int = 0
-    private var cursorColIndex = 0
-    private var cursorRowIndex = 0
-    private val chars = mutableListOf<MutableList<Char>>()
-    fun setSize(width: Int, height: Int) {
-        this.width = width
-        this.height = height
-    }
+class LineEditor(val width: Int) {
+    private var cursorIndex: Int = 0
+    private val chars = mutableListOf<Char>()
 
-    fun isCursor(col: Int, row: Int, left: Int, top: Int): Boolean {
-        val cursorColIndex = col - left
-        val cursorRowIndex = row - top
-        return this.cursorColIndex == cursorColIndex && this.cursorRowIndex == cursorRowIndex
-    }
+    fun isCursor(leftInset: Int) = cursorIndex == leftInset
 
-    fun getChar(col: Int, row: Int, left: Int, top: Int): Char? {
-        val rowIndex = row - top
-        return chars.getOrNull(rowIndex)?.let {
-            val colIndex = col - left
-            it.getOrNull(colIndex)
-        }
-    }
+    fun getChar(leftInset: Int) = chars.getOrNull(leftInset)
 
-    fun deletePreviousCharOnLine() {
-        if (cursorColIndex > 0) {
-            cursorColIndex -= 1
-            chars.getOrNull(cursorRowIndex)?.removeAt(cursorColIndex)
+    fun deletePreviousChar() {
+        if (cursorIndex > 0) {
+            cursorIndex -= 1
+            chars.removeAt(cursorIndex)
         }
     }
 
     fun insertChar(char: Char) {
-        val rowChars =
-            if (cursorRowIndex < chars.size) {
-                chars[cursorRowIndex]
+        val oldIndex = cursorIndex
+        val newCharIndex =
+            if (oldIndex < chars.size) oldIndex.also { chars.add(it, char) }
+            else chars.size.also { chars.add(char) }
+        cursorIndex = newCharIndex + 1
+    }
+}
+
+class TextEditor(private val width: Int, private val height: Int) {
+    private var cursorRowIndex = 0
+    private val lineEditors = mutableListOf(LineEditor(width))
+
+    fun isCursor(leftInset: Int, topInset: Int): Boolean {
+        return if (topInset != this.cursorRowIndex) false else {
+            val lineEditor = lineEditors.getOrNull(topInset)
+            lineEditor?.isCursor(leftInset) ?: false
+        }
+    }
+
+    fun getChar(leftInset: Int, topInset: Int): Char? = lineEditors.getOrNull(topInset)?.getChar(leftInset)
+
+    fun deletePreviousCharOnLine() {
+        lineEditors.getOrNull(cursorRowIndex)?.deletePreviousChar()
+    }
+
+    fun insertChar(char: Char) {
+        val rowEditor =
+            if (cursorRowIndex < lineEditors.size) {
+                lineEditors[cursorRowIndex]
             } else {
-                mutableListOf<Char>().also {
-                    chars.add(it)
-                    cursorRowIndex = chars.lastIndex
+                LineEditor(width).also {
+                    lineEditors.add(it)
+                    cursorRowIndex = lineEditors.lastIndex
                 }
             }
-        val charCol =
-            if (cursorColIndex < rowChars.size) {
-                rowChars.add(cursorColIndex, char)
-                cursorColIndex
-            } else rowChars.size.also {
-                rowChars.add(char)
-                cursorColIndex = it
-            }
-        cursorColIndex = charCol + 1
+        rowEditor.insertChar(char)
     }
 }
 
@@ -92,21 +93,26 @@ fun BoxContext.editBox(): Box<Void> {
     val textColor = surfaceSwatch.strokeColor
     val highlightColor = secondarySwatch.fillColor
     val id = randomId()
-    val textEditor = TextEditor()
+    var lateEditor: TextEditor? = null
+    fun initEditor(bounds: BoxBounds): TextEditor {
+        return lateEditor ?: TextEditor(bounds.width, bounds.height).also { lateEditor = it }
+    }
     return box(
         name = "EditBox",
         render = {
             val bounds = edge.bounds
             if (bounds.contains(col, row)) {
                 setColor(surfaceColor, bounds.z)
-                textEditor.setSize(bounds.width, bounds.height - 1)
+                val editor = initEditor(bounds)
                 if (row == bounds.bottom - 1) {
                     if (activeFocusId == id) setGlyph('_', highlightColor, bounds.z)
                 } else {
-                    textEditor.getChar(col, row, bounds.left, bounds.top)?.let { setGlyph(it, textColor, bounds.z) }
+                    val leftInset = col - bounds.left
+                    val topInset = row - bounds.top
+                    editor.getChar(leftInset, topInset)?.let { setGlyph(it, textColor, bounds.z) }
                     if (activeFocusId == id) {
                         if (row == bounds.bottom - 1) setGlyph('_', highlightColor, bounds.z)
-                        val isCursor = textEditor.isCursor(col, row, bounds.left, bounds.top)
+                        val isCursor = editor.isCursor(leftInset, topInset)
                         if (isCursor) setCursor(col, row)
                     }
                 }
@@ -120,15 +126,9 @@ fun BoxContext.editBox(): Box<Void> {
                     when (keyStroke.keyType) {
                         KeyType.Character -> {
                             val char = keyStroke.character
-                            if (!char.isISOControl()) {
-                                textEditor.insertChar(char)
-                                boxScreen.refreshScreen()
-                            }
+                            if (!char.isISOControl()) lateEditor?.insertChar(char)?.also { boxScreen.refreshScreen() }
                         }
-                        KeyType.Backspace -> {
-                            textEditor.deletePreviousCharOnLine()
-                            boxScreen.refreshScreen()
-                        }
+                        KeyType.Backspace -> lateEditor?.deletePreviousCharOnLine()?.also { boxScreen.refreshScreen() }
                         else -> Unit
                     }
                 }
