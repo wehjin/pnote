@@ -2,38 +2,48 @@ package pnote.projections
 
 import com.googlecode.lanterna.input.KeyStroke
 import com.googlecode.lanterna.input.KeyType
+import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import pnote.App
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
+import pnote.stories.EditNote
+import pnote.stories.editNoteStory
 import java.lang.Integer.max
 
 fun main() {
     runBlocking {
+        val app = App("pnotes", "edit-note-projection")
+        val editNoteStory = app.editNoteStory(StringHandle("Hohoho"))
         val boxContext = mainBoxContext()
-        boxContext.projectEditNote().job.join()
-        boxContext.boxScreen.close()
+        val editNoteProjection = boxContext.projectEditNote(editNoteStory)
+        editNoteProjection.job.join().also { boxContext.boxScreen.close() }
     }
 }
 
 private const val actionSideWidth = 25
 
-fun BoxContext.projectEditNote(): SubProjection {
-    val ending = Channel<Unit>(Channel.RENDEZVOUS)
-    return SubProjection("EditNote", GlobalScope.launch {
-        val titleRow = lineEditBox("Title").maxHeight(3)
-        val contentRow = editBox().packBottom(4, gapBox())
-        val infoSide = contentRow.packTop(4, titleRow).maxWidth(30).packTop(4, gapBox())
-        val actionSide = messageBox("Actions", primaryDarkSwatch)
-        val box = infoSide.packRight(actionSideWidth, actionSide)
-        boxScreen.setBox(box)
-        ending.receive()
+fun BoxContext.projectEditNote(story: Story<EditNote>): SubProjection {
+    return SubProjection(story.name, GlobalScope.launch {
+        visionLoop@ for (vision in story.subscribe()) {
+            when (vision) {
+                EditNote.FinishedEditing -> break@visionLoop
+                is EditNote.Editing -> {
+                    val titleRow = lineEditBox("Note Title", vision.title).maxHeight(3)
+                    val contentRow = editBox().packBottom(4, gapBox())
+                    val infoSide = contentRow.packTop(4, titleRow).maxWidth(30).packTop(4, gapBox())
+                    val actionSide = messageBox("Actions", primaryDarkSwatch)
+                    val box = infoSide.packRight(actionSideWidth, actionSide)
+                    boxScreen.setBox(box)
+                }
+            }
+        }
     })
 }
 
-fun BoxContext.lineEditBox(label: String): Box<Void> {
+fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
     val id = randomId()
     val fillBox = fillBox(primaryDarkSwatch.fillColor)
     val focusScoreBox = glyphBox('_', secondarySwatch.fillColor)
@@ -47,7 +57,8 @@ fun BoxContext.lineEditBox(label: String): Box<Void> {
             val bounds = edge.bounds
             val editWidth = max(0, bounds.width - 2)
             val editBounds = bounds.indent(1)
-            val editor = lineEditor ?: LineEditor(editWidth).also { lineEditor = it }
+            val editor = lineEditor
+                ?: LineEditor(editWidth, line.toCharSequence().toMutableList()).also { lineEditor = it }
             fillBox.render(this)
             if (activeFocusId == id) {
                 focusScoreBox.render(withEdgeBounds(bounds.confineToBottom()))

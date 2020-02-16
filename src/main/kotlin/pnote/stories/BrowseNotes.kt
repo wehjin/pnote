@@ -36,7 +36,7 @@ fun AppScope.browseNotesStory(): Story<BrowseNotes> = matchingStory(
                 vision
             } else {
                 val title = StringHandle(banner.title.trim())
-                val substory = noteDetailsStory(title, vision.password, action.noteId)
+                val substory = noteDetailsStory(title)
                 whenSubstoryEnds(substory) { offer(Reload) }
                 AwaitingDetails(substory)
             }

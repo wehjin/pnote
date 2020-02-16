@@ -10,14 +10,12 @@ import pnote.projections.sandbox.*
 import pnote.projections.sandbox.BoxOption.SwatchEnabled
 import pnote.projections.sandbox.BoxOption.SwatchPressed
 import pnote.stories.NoteDetails
-import pnote.stories.NoteDetails.FinishedViewing
-import pnote.stories.NoteDetails.Viewing
+import pnote.stories.NoteDetails.*
 import pnote.stories.noteDetailsStory
-import pnote.tools.password
 
 fun main() {
     val app = App("pnote", "note-details-test")
-    val story = app.noteDetailsStory(StringHandle("A Title"), password("hey"), 1)
+    val story = app.noteDetailsStory(StringHandle("A Title"))
     val boxContext = mainBoxContext()
     runBlocking { boxContext.projectNoteDetails(story).job.join() }
     boxContext.boxScreen.close()
@@ -25,34 +23,46 @@ fun main() {
 
 fun BoxContext.projectNoteDetails(story: Story<NoteDetails>): SubProjection =
     SubProjection(story.name, GlobalScope.launch {
+        var subProjecting: String? = null
         visionLoop@ for (vision in story.subscribe()) {
             println("${story.name}: $vision")
             when (vision) {
+                is FinishedViewing -> break@visionLoop
                 is Viewing -> {
                     val leftPadding = 15
                     val descriptionRow = descriptionRow(vision.title.toCharSequence(), leftPadding)
-                    val actionsRow = actionsRow(leftPadding, boxScreen) { story.offer(vision.cancel) }
+                    val actionsRow = actionsRow(leftPadding, boxScreen, vision, story)
                     val headerRow = fillBox(backgroundSwatch.fillColor)
                     val pageBox = descriptionRow.packTop(3, actionsRow).packTop(10, headerRow)
-                    boxScreen.setBox(pageBox)
+                    boxScreen.setBox(pageBox).also { subProjecting = null }
                 }
-                is FinishedViewing -> break@visionLoop
+                is Editing -> {
+                    if (subProjecting != vision.story.name) {
+                        projectEditNote(vision.story)
+                        subProjecting = vision.story.name
+                    }
+                }
             }
         }
     })
 
-private fun BoxContext.actionsRow(leftPadding: Int, boxScreen: BoxScreen, finish: () -> Unit): Box<Void> {
+private fun BoxContext.actionsRow(
+    leftPadding: Int,
+    boxScreen: BoxScreen,
+    vision: Viewing,
+    story: Story<NoteDetails>
+): Box<Void> {
     val buttonOptions = setOf(SwatchEnabled(primarySwatch), SwatchPressed(primaryLightSwatch))
     val copyButton = buttonBox("Copy Text", buttonOptions) {
-        println("BUTTON!")
         boxScreen.refreshScreen()
     }
     val editButton = buttonBox("Edit", buttonOptions) {
-        println("EDIT!")
-
+        story.offer(vision.edit(vision.title))
+        boxScreen.refreshScreen()
     }
     val backButton = buttonBox("Back", buttonOptions) {
-        finish()
+        story.offer(vision.cancel)
+        boxScreen.refreshScreen()
     }
     val actionsOverlay = gapBox()
         .packLeft(13, copyButton)
