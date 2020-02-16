@@ -1,8 +1,6 @@
 package pnote.projections.sandbox
 
-import com.beust.klaxon.internal.firstNotNullResult
 import com.googlecode.lanterna.TextColor
-import com.googlecode.lanterna.input.KeyStroke
 import com.googlecode.lanterna.input.KeyType
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -41,17 +39,6 @@ fun BoxContext.messageBox(message: String, swatch: ColorSwatch, snap: Snap = Sna
         setContent = label::setContent
     )
 }
-
-sealed class BoxOption {
-    data class SwatchEnabled(val colorSwatch: ColorSwatch) : BoxOption()
-    data class SwatchPressed(val colorSwatch: ColorSwatch) : BoxOption()
-    data class SwatchFocused(val colorSwatch: ColorSwatch) : BoxOption()
-    data class ReadSpark(val spark: Spark, val block: SparkReadScope.() -> Unit) : BoxOption()
-}
-
-val Set<BoxOption>.swatchEnabled get() = this.firstNotNullResult { (it as? BoxOption.SwatchEnabled) }?.colorSwatch
-val Set<BoxOption>.swatchPressed get() = this.firstNotNullResult { (it as? BoxOption.SwatchPressed) }?.colorSwatch
-val Set<BoxOption>.swatchFocused get() = this.firstNotNullResult { (it as? BoxOption.SwatchFocused) }?.colorSwatch
 
 sealed class ButtonBoxOption {
     data class EnabledSwatch(val swatch: ColorSwatch) : ButtonBoxOption()
@@ -102,7 +89,8 @@ fun BoxContext.buttonBox(text: String, options: Set<ButtonBoxOption> = emptySet(
                             delay(100)
                             pressBlock()
                         }
-                    }
+                        true
+                    } else false
                 }))
             }
         },
@@ -110,20 +98,9 @@ fun BoxContext.buttonBox(text: String, options: Set<ButtonBoxOption> = emptySet(
     )
 }
 
-@Deprecated(message = "Used ButtonBoxOption variant")
-fun BoxContext.buttonBox(text: String, options: Set<BoxOption>? = null, onPress: () -> Unit): Box<Void> {
-    val buttonOptions = setOf(
-        PressReader(onPress),
-        EnabledSwatch(options?.swatchEnabled ?: surfaceSwatch),
-        FocusedSwatch(options?.swatchFocused ?: primaryLightSwatch),
-        PressedSwatch(options?.swatchPressed ?: primarySwatch)
-    )
-    return buttonBox(text, buttonOptions)
-}
-
 fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
     var content = ""
-    val focusableId = randomId()
+    val id = randomId()
     return box(
         name = "InputBox",
         render = {
@@ -143,30 +120,27 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
                 else {
                     setGlyph(' ', primaryLightSwatch.strokeColor, edge.bounds.z)
                 }
-                if (activeFocusId == focusableId && col == cursorX && row == edge.bounds.centerY) {
+                if (activeFocusId == id && col == cursorX && row == edge.bounds.centerY) {
                     setCursor(col, row)
                 }
             }
         },
         focus = {
-            setFocusable(Focusable(focusableId, edge.bounds, object : KeyReader {
-                override val readerId: Long = focusableId
-                override val handlesUpDown: Boolean = false
-                override fun receiveKey(keyStroke: KeyStroke) {
-                    val changed = when (keyStroke.keyType) {
-                        KeyType.Character -> content + keyStroke.character.toString()
-                        KeyType.Backspace, KeyType.Delete -> when {
-                            content.isEmpty() -> null
-                            else -> content.substring(0, content.lastIndex)
-                        }
-                        else -> null
+            setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+                val changed = when (keyStroke.keyType) {
+                    KeyType.Character -> content + keyStroke.character.toString()
+                    KeyType.Backspace, KeyType.Delete -> when {
+                        content.isEmpty() -> null
+                        else -> content.substring(0, content.lastIndex)
                     }
-                    changed?.let {
-                        content = it
-                        setChanged(edge.bounds)
-                        onInput?.let { GlobalScope.launch { it.invoke(content) } }
-                    }
+                    else -> null
                 }
+                changed?.let {
+                    content = it
+                    setChanged(edge.bounds)
+                    onInput?.let { GlobalScope.launch { it.invoke(content) } }
+                    true
+                } ?: false
             }))
         },
         setContent = noContent

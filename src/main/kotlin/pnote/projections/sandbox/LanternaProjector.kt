@@ -1,6 +1,7 @@
 package pnote.projections.sandbox
 
 import com.googlecode.lanterna.TextColor
+import pnote.projections.sandbox.ButtonBoxOption.*
 
 class LanternaProjector : BoxContext {
     override val boxScreen: BoxScreen = lanternaBoxScreen()
@@ -40,9 +41,14 @@ class LanternaProjector : BoxContext {
         val passwordInput = inputBox()
         val checkInput = inputBox()
         val importButton = buttonBox(
-            "Import",
-            setOf(BoxOption.SwatchEnabled(secondarySwatch))
-        ) { endProjection() }
+            text = "Import",
+            options = setOf(
+                PressReader { endProjection() },
+                EnabledSwatch(secondarySwatch),
+                FocusedSwatch(primaryLightSwatch),
+                PressedSwatch(primarySwatch)
+            )
+        )
         val inputCluster = passwordInput
             .packBottom(1, fillBox(null))
             .packBottom(1, checkInput)

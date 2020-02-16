@@ -45,18 +45,16 @@ data class Focusable(
     val keyReader: KeyReader
 )
 
-fun keyReader(id: Long, handlesUpDown: Boolean = false, onKey: (keyStroke: KeyStroke) -> Unit): KeyReader {
+fun keyReader(id: Long, onKey: (keyStroke: KeyStroke) -> Boolean): KeyReader {
     return object : KeyReader {
         override val readerId: Long = id
-        override val handlesUpDown: Boolean = handlesUpDown
         override fun receiveKey(keyStroke: KeyStroke) = onKey(keyStroke)
     }
 }
 
 interface KeyReader {
     val readerId: Long
-    val handlesUpDown: Boolean
-    fun receiveKey(keyStroke: KeyStroke)
+    fun receiveKey(keyStroke: KeyStroke): Boolean
 }
 
 interface SparkReadScope {

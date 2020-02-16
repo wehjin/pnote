@@ -7,8 +7,7 @@ import kotlinx.coroutines.runBlocking
 import pnote.App
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
-import pnote.projections.sandbox.BoxOption.SwatchEnabled
-import pnote.projections.sandbox.BoxOption.SwatchPressed
+import pnote.projections.sandbox.ButtonBoxOption.*
 import pnote.stories.NoteDetails
 import pnote.stories.NoteDetails.*
 import pnote.stories.noteDetailsStory
@@ -52,18 +51,29 @@ private fun BoxContext.actionsRow(
     vision: Viewing,
     story: Story<NoteDetails>
 ): Box<Void> {
-    val buttonOptions = setOf(SwatchEnabled(primarySwatch), SwatchPressed(primaryLightSwatch))
-    val copyButton = buttonBox("Copy Text", buttonOptions) {
-        boxScreen.refreshScreen()
-    }
-    val editButton = buttonBox("Edit", buttonOptions) {
-        story.offer(vision.edit(vision.title))
-        boxScreen.refreshScreen()
-    }
-    val backButton = buttonBox("Back", buttonOptions) {
-        story.offer(vision.cancel)
-        boxScreen.refreshScreen()
-    }
+    val styleOptions = setOf(
+        EnabledSwatch(primarySwatch),
+        FocusedSwatch(primaryLightSwatch),
+        PressedSwatch(primaryLightSwatch)
+    )
+    val copyButton = buttonBox(
+        text = "Copy Text",
+        options = styleOptions + PressReader { boxScreen.refreshScreen() }
+    )
+    val editButton = buttonBox(
+        text = "Edit",
+        options = styleOptions + PressReader {
+            story.offer(vision.edit(vision.title))
+            boxScreen.refreshScreen()
+        }
+    )
+    val backButton = buttonBox(
+        text = "Back",
+        options = styleOptions + PressReader {
+            story.offer(vision.cancel)
+            boxScreen.refreshScreen()
+        }
+    )
     val actionsOverlay = gapBox()
         .packLeft(13, copyButton)
         .packLeft(1, gapBox())

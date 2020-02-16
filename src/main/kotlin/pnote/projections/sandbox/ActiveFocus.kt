@@ -73,22 +73,22 @@ class ActiveFocus(private val channel: SendChannel<RenderAction>) {
     private fun routeKeyToFocus(keyStroke: KeyStroke) {
         when (keyStroke.keyType) {
             KeyType.ArrowDown, KeyType.ArrowUp -> {
-                val sendKeyToReader = keyReader?.handlesUpDown ?: false
-                if (sendKeyToReader) {
-                    keyReader?.receiveKey(keyStroke)
-                } else when (keyStroke.keyType) {
-                    KeyType.ArrowDown -> moveFocus(true)
-                    KeyType.ArrowUp -> moveFocus(false)
-                    else -> check(false)
+                val taken = keyReader?.receiveKey(keyStroke) ?: false
+                if (!taken) {
+                    when (keyStroke.keyType) {
+                        KeyType.ArrowDown -> moveFocusLinear(true)
+                        KeyType.ArrowUp -> moveFocusLinear(false)
+                        else -> check(false)
+                    }
                 }
             }
-            KeyType.Tab -> moveFocus(true)
-            KeyType.ReverseTab -> moveFocus(false)
+            KeyType.Tab -> moveFocusLinear(true)
+            KeyType.ReverseTab -> moveFocusLinear(false)
             else -> keyReader?.receiveKey(keyStroke)
         }
     }
 
-    private fun moveFocus(forward: Boolean) {
+    private fun moveFocusLinear(forward: Boolean) {
         if (focusables.size >= 2) {
             val nextFocusId = selectNewFocus(focusId, forward)
             nextFocusId?.let {

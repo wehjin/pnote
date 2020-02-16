@@ -1,6 +1,5 @@
 package pnote.projections
 
-import com.googlecode.lanterna.input.KeyStroke
 import com.googlecode.lanterna.input.KeyType
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
@@ -99,13 +98,25 @@ fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
                 Focusable(
                     id, edge.bounds, keyReader(id) { stroke ->
                         when (stroke.keyType) {
-                            KeyType.Character -> stroke.character.also { char ->
-                                if (!char.isISOControl()) lineEditor?.insertChar(char).also { boxScreen.refreshScreen() }
+                            KeyType.Character -> {
+                                stroke.character.also { char ->
+                                    if (!char.isISOControl()) lineEditor?.insertChar(char).also { boxScreen.refreshScreen() }
+                                }
+                                true
                             }
-                            KeyType.Backspace -> lineEditor?.deletePreviousChar()?.also { boxScreen.refreshScreen() }
-                            KeyType.ArrowLeft -> lineEditor?.moveLeft().also { boxScreen.refreshScreen() }
-                            KeyType.ArrowRight -> lineEditor?.moveRight().also { boxScreen.refreshScreen() }
-                            else -> Unit
+                            KeyType.Backspace -> {
+                                lineEditor?.deletePreviousChar()?.also { boxScreen.refreshScreen() }
+                                true
+                            }
+                            KeyType.ArrowLeft -> {
+                                lineEditor?.moveLeft().also { boxScreen.refreshScreen() }
+                                true
+                            }
+                            KeyType.ArrowRight -> {
+                                lineEditor?.moveRight().also { boxScreen.refreshScreen() }
+                                true
+                            }
+                            else -> false
                         }
                     })
             )
@@ -147,23 +158,40 @@ fun BoxContext.editBox(): Box<Void> {
             }
         },
         focus = {
-            setFocusable(Focusable(id, edge.bounds, object : KeyReader {
-                override val readerId: Long = id
-                override val handlesUpDown: Boolean = true
-                override fun receiveKey(keyStroke: KeyStroke) {
-                    when (keyStroke.keyType) {
-                        KeyType.Character -> {
-                            val char = keyStroke.character
-                            if (!char.isISOControl()) lateEditor?.insertChar(char)?.also { boxScreen.refreshScreen() }
-                        }
-                        KeyType.Backspace -> lateEditor?.deletePreviousCharOnLine()?.also { boxScreen.refreshScreen() }
-                        KeyType.ArrowUp -> lateEditor?.moveUp().also { boxScreen.refreshScreen() }
-                        KeyType.ArrowDown -> lateEditor?.moveDown().also { boxScreen.refreshScreen() }
-                        KeyType.ArrowLeft -> lateEditor?.moveLeft().also { boxScreen.refreshScreen() }
-                        KeyType.ArrowRight -> lateEditor?.moveRight().also { boxScreen.refreshScreen() }
-                        KeyType.Enter -> lateEditor?.splitLine()?.also { boxScreen.refreshScreen() }
-                        else -> Unit
+            setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+                when (keyStroke.keyType) {
+                    KeyType.Character -> {
+                        val char = keyStroke.character
+                        if (!char.isISOControl()) lateEditor?.insertChar(char)?.also { boxScreen.refreshScreen() }
+                        true
                     }
+                    KeyType.Backspace -> {
+                        lateEditor?.deletePreviousCharOnLine()?.also { boxScreen.refreshScreen() }
+                        true
+                    }
+                    KeyType.ArrowUp -> {
+                        val moved = lateEditor?.moveUp() ?: false
+                        if (moved) boxScreen.refreshScreen()
+                        moved
+                    }
+                    KeyType.ArrowDown -> {
+                        val moved = lateEditor?.moveDown() ?: false
+                        if (moved) boxScreen.refreshScreen()
+                        moved
+                    }
+                    KeyType.ArrowLeft -> {
+                        lateEditor?.moveLeft().also { boxScreen.refreshScreen() }
+                        true
+                    }
+                    KeyType.ArrowRight -> {
+                        lateEditor?.moveRight().also { boxScreen.refreshScreen() }
+                        true
+                    }
+                    KeyType.Enter -> {
+                        lateEditor?.splitLine()?.also { boxScreen.refreshScreen() }
+                        true
+                    }
+                    else -> false
                 }
             }))
         },
