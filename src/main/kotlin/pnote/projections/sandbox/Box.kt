@@ -105,22 +105,18 @@ fun <T> Box<T>.mapEdge(map: (edgeBounds: BoxBounds) -> BoxBounds): Box<T> = box(
     setContent = this::setContent
 )
 
-fun <T> Box<T>.focusable(id: Long, requiresUpDown: Boolean, onKey: FocusKeyScope.() -> Unit): Box<T> = box(
+fun <T> Box<T>.focusable(id: Long, onKey: FocusKeyScope.() -> Boolean): Box<T> = box(
     name = name,
     render = this::render,
     focus = {
         val focusScope = this
-        setFocusable(Focusable(id, edge.bounds, object : KeyReader {
-            override val readerId: Long = id
-            override val handlesUpDown: Boolean = requiresUpDown
-            override fun receiveKey(keyStroke: KeyStroke) {
-                val scope = object : FocusKeyScope {
-                    override val edge: BoxEdge by lazy { focusScope.edge }
-                    override val keyStroke: KeyStroke = keyStroke
-                    override fun setChanged(bounds: BoxBounds) = focusScope.setChanged(bounds)
-                }
-                scope.onKey()
+        setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+            val scope = object : FocusKeyScope {
+                override val edge: BoxEdge by lazy { focusScope.edge }
+                override val keyStroke: KeyStroke = keyStroke
+                override fun setChanged(bounds: BoxBounds) = focusScope.setChanged(bounds)
             }
+            scope.onKey()
         }))
     },
     setContent = this::setContent

@@ -10,7 +10,7 @@ fun BoxContext.listBox(items: List<String>, onItemClicked: (Int) -> Unit): Box<L
     var selectedItem = 0
     val list = passiveList(items) { selectedItem = it }
     val focusId = randomId()
-    return list.focusable(focusId, true) {
+    return list.focusable(focusId) {
         val listChanged = when (keyStroke.keyType) {
             KeyType.ArrowDown -> true.also { list.setContent(ListMovement.Down) }
             KeyType.ArrowUp -> true.also { list.setContent(ListMovement.Up) }
@@ -18,6 +18,7 @@ fun BoxContext.listBox(items: List<String>, onItemClicked: (Int) -> Unit): Box<L
             else -> false
         }
         if (listChanged) setChanged(edge.bounds)
+        listChanged
     }
 }
 
