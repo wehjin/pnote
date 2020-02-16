@@ -42,6 +42,8 @@ class LineEditor(
     private var cursorCharsIndex: Int = 0
     private val leftVisibleColumns = 2
 
+    val cursorIndex: Int get() = cursorCharsIndex
+
     fun isCursor(leftInset: Int): Boolean {
         return (cursorCharsIndex - leftCharsIndex) == leftInset
     }
@@ -52,6 +54,15 @@ class LineEditor(
         } else chars.getOrNull(leftCharsIndex + leftInset)
     }
 
+    fun matchCursorIndex(newCursorIndex: Int) {
+        val oldCursorIndex = cursorCharsIndex
+        when {
+            newCursorIndex > oldCursorIndex -> repeat(newCursorIndex - oldCursorIndex) { moveRight() }
+            newCursorIndex < oldCursorIndex -> repeat(oldCursorIndex - newCursorIndex) { moveLeft() }
+            else -> Unit
+        }
+    }
+
     fun splitLine(): LineEditor {
         val tailChars = chars.subList(cursorCharsIndex, chars.size).toMutableList()
         repeat(tailChars.size) { chars.removeAt(cursorCharsIndex) }
@@ -60,30 +71,44 @@ class LineEditor(
         return LineEditor(width, tailChars)
     }
 
-    fun deletePreviousChar() {
+    fun moveLeft(): Boolean =
         if (cursorCharsIndex > 0) {
             cursorCharsIndex -= 1
-            chars.removeAt(cursorCharsIndex)
             if (cursorCharsIndex - leftVisibleColumns < leftCharsIndex) {
                 leftCharsIndex = max(0, cursorCharsIndex - leftVisibleColumns)
             }
+            true
+        } else false
+
+    fun moveRight(): Boolean {
+        return if (cursorCharsIndex < chars.size) {
+            cursorCharsIndex++
+            if (cursorCharsIndex > (leftCharsIndex + width - 1)) {
+                leftCharsIndex = cursorCharsIndex - width + 1
+            }
+            true
+        } else false
+    }
+
+    fun deletePreviousChar() {
+        if (moveLeft()) {
+            chars.removeAt(cursorCharsIndex)
         }
     }
 
     fun insertChar(char: Char) {
-        val oldIndex = cursorCharsIndex
-        val newCharIndex =
-            if (oldIndex < chars.size) oldIndex.also { chars.add(it, char) }
-            else chars.size.also { chars.add(char) }
-        cursorCharsIndex = newCharIndex + 1
-        if (cursorCharsIndex > (leftCharsIndex + width - 1)) {
-            leftCharsIndex = cursorCharsIndex - width + 1
+        if (cursorCharsIndex == chars.size) {
+            chars.add(char)
+        } else {
+            chars.add(cursorCharsIndex, char)
         }
+        moveRight()
     }
 }
 
 class TextEditor(private val width: Int, private val height: Int) {
     private var cursorRowIndex = 0
+    private var preferredCursorIndex = 0
     private val lineEditors = mutableListOf(LineEditor(width))
 
     fun isCursor(leftInset: Int, topInset: Int): Boolean {
@@ -97,15 +122,45 @@ class TextEditor(private val width: Int, private val height: Int) {
         return lineEditors.getOrNull(topInset)?.getDisplayChar(leftInset)
     }
 
+    fun moveRight(): Boolean = lineEditors[cursorRowIndex].moveRight().also {
+        updatePreferredCursorIndex()
+    }
+
+    private fun updatePreferredCursorIndex() {
+        preferredCursorIndex = lineEditors[cursorRowIndex].cursorIndex
+    }
+
+    fun moveLeft(): Boolean = lineEditors[cursorRowIndex].moveLeft().also {
+        preferredCursorIndex = lineEditors[cursorRowIndex].cursorIndex
+    }
+
+    fun moveUp(): Boolean {
+        return if (cursorRowIndex > 0) {
+            lineEditors[cursorRowIndex - 1].matchCursorIndex(preferredCursorIndex)
+            cursorRowIndex--
+            true
+        } else false
+    }
+
+    fun moveDown(): Boolean {
+        return if (cursorRowIndex < lineEditors.lastIndex) {
+            lineEditors[cursorRowIndex + 1].matchCursorIndex(preferredCursorIndex)
+            cursorRowIndex++
+            true
+        } else false
+    }
+
     fun splitLine() {
         val currentLine = lineEditors.getOrNull(cursorRowIndex)
         val newLineEditor = currentLine?.splitLine() ?: LineEditor(width)
         lineEditors.add(cursorRowIndex + 1, newLineEditor)
         cursorRowIndex++
+        updatePreferredCursorIndex()
     }
 
     fun deletePreviousCharOnLine() {
         lineEditors.getOrNull(cursorRowIndex)?.deletePreviousChar()
+        updatePreferredCursorIndex()
     }
 
     fun insertChar(char: Char) {
@@ -119,6 +174,7 @@ class TextEditor(private val width: Int, private val height: Int) {
                 }
             }
         rowEditor.insertChar(char)
+        updatePreferredCursorIndex()
     }
 }
 
@@ -164,6 +220,10 @@ fun BoxContext.editBox(): Box<Void> {
                         }
                         KeyType.Backspace -> lateEditor?.deletePreviousCharOnLine()?.also { boxScreen.refreshScreen() }
                         KeyType.Enter -> lateEditor?.splitLine()?.also { boxScreen.refreshScreen() }
+                        KeyType.ArrowUp -> lateEditor?.moveUp().also { boxScreen.refreshScreen() }
+                        KeyType.ArrowDown -> lateEditor?.moveDown().also { boxScreen.refreshScreen() }
+                        KeyType.ArrowLeft -> lateEditor?.moveLeft().also { boxScreen.refreshScreen() }
+                        KeyType.ArrowRight -> lateEditor?.moveRight().also { boxScreen.refreshScreen() }
                         else -> Unit
                     }
                 }
