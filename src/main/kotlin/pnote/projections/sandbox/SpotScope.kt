@@ -44,6 +44,14 @@ data class Focusable(
     val keyReader: KeyReader
 )
 
+fun keyReader(id: Long, handlesUpDown: Boolean = false, onKey: (keyStroke: KeyStroke) -> Unit): KeyReader {
+    return object : KeyReader {
+        override val readerId: Long = id
+        override val handlesUpDown: Boolean = handlesUpDown
+        override fun receiveKey(keyStroke: KeyStroke) = onKey(keyStroke)
+    }
+}
+
 interface KeyReader {
     val readerId: Long
     val handlesUpDown: Boolean

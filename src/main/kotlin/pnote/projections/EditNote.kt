@@ -23,8 +23,7 @@ private const val actionSideWidth = 25
 fun BoxContext.projectEditNote(): SubProjection {
     val ending = Channel<Unit>(Channel.RENDEZVOUS)
     return SubProjection("EditNote", GlobalScope.launch {
-        val titleRow =
-            inputBox {}.packTop(2, labelBox("Title", backgroundSwatch.strokeColor, Snap.TOP_LEFT)).maxHeight(3)
+        val titleRow = lineEditBox("Title").maxHeight(3)
         val contentRow = editBox().packBottom(4, gapBox())
         val infoSide = contentRow.packTop(4, titleRow).maxWidth(30).packTop(4, gapBox())
         val actionSide = messageBox("Actions", primaryDarkSwatch)
@@ -34,168 +33,59 @@ fun BoxContext.projectEditNote(): SubProjection {
     })
 }
 
-class LineEditor(
-    private val width: Int,
-    private val chars: MutableList<Char> = mutableListOf()
-) {
-    private var leftCharsIndex: Int = 0
-    private var cursorCharsIndex: Int = 0
-    private val leftVisibleColumns = 2
-
-    val cursorIndex: Int get() = cursorCharsIndex
-
-    fun wash() {
-        if (chars.size > 0) chars.random()
-    }
-
-    fun isCursor(leftInset: Int): Boolean {
-        return (cursorCharsIndex - leftCharsIndex) == leftInset
-    }
-
-    fun getDisplayChar(leftInset: Int): Char? {
-        return if (leftInset == 0 && leftCharsIndex > 0) {
-            '\\'
-        } else chars.getOrNull(leftCharsIndex + leftInset)
-    }
-
-    fun matchCursorIndex(newCursorIndex: Int) {
-        val oldCursorIndex = cursorCharsIndex
-        when {
-            newCursorIndex > oldCursorIndex -> repeat(newCursorIndex - oldCursorIndex) { moveRight() }
-            newCursorIndex < oldCursorIndex -> repeat(oldCursorIndex - newCursorIndex) { moveLeft() }
-            else -> Unit
-        }
-    }
-
-    fun splitLine(): LineEditor {
-        val tailChars = chars.subList(cursorCharsIndex, chars.size).toMutableList()
-        repeat(tailChars.size) { chars.removeAt(cursorCharsIndex) }
-        leftCharsIndex = 0
-        cursorCharsIndex = 0
-        return LineEditor(width, tailChars)
-    }
-
-    fun selectEndAndCombineLine(lineEditor: LineEditor) {
-        matchCursorIndex(chars.size)
-        chars.addAll(lineEditor.chars)
-    }
-
-    fun moveLeft(): Boolean =
-        if (cursorCharsIndex > 0) {
-            cursorCharsIndex -= 1
-            if (cursorCharsIndex - leftVisibleColumns < leftCharsIndex) {
-                leftCharsIndex = max(0, cursorCharsIndex - leftVisibleColumns)
-            }
-            true
-        } else false
-
-    fun moveRight(): Boolean {
-        return if (cursorCharsIndex < chars.size) {
-            cursorCharsIndex++
-            if (cursorCharsIndex > (leftCharsIndex + width - 1)) {
-                leftCharsIndex = cursorCharsIndex - width + 1
-            }
-            true
-        } else false
-    }
-
-    fun deletePreviousChar(): Boolean =
-        if (moveLeft()) {
-            true.also { chars.removeAt(cursorCharsIndex) }
-        } else false
-
-    fun insertChar(char: Char) {
-        if (cursorCharsIndex == chars.size) {
-            chars.add(char)
-        } else {
-            chars.add(cursorCharsIndex, char)
-        }
-        moveRight()
-    }
-}
-
-class TextEditor(private val width: Int, private val height: Int) {
-    private var cursorRowIndex = 0
-    private var preferredCursorIndex = 0
-    private val lineEditors = mutableListOf(LineEditor(width))
-
-    fun isCursor(leftInset: Int, topInset: Int): Boolean {
-        return if (topInset != this.cursorRowIndex) false else {
-            val lineEditor = lineEditors.getOrNull(topInset)
-            lineEditor?.isCursor(leftInset) ?: false
-        }
-    }
-
-    fun getChar(leftInset: Int, topInset: Int): Char? {
-        return lineEditors.getOrNull(topInset)?.getDisplayChar(leftInset)
-    }
-
-    fun moveRight(): Boolean = lineEditors[cursorRowIndex].moveRight().also {
-        updatePreferredCursorIndex()
-    }
-
-    private fun updatePreferredCursorIndex() {
-        preferredCursorIndex = lineEditors[cursorRowIndex].cursorIndex
-    }
-
-    fun moveLeft(): Boolean = lineEditors[cursorRowIndex].moveLeft().also {
-        preferredCursorIndex = lineEditors[cursorRowIndex].cursorIndex
-    }
-
-    fun moveUp(): Boolean {
-        return if (cursorRowIndex > 0) {
-            lineEditors[cursorRowIndex - 1].matchCursorIndex(preferredCursorIndex)
-            cursorRowIndex--
-            true
-        } else false
-    }
-
-    fun moveDown(): Boolean {
-        return if (cursorRowIndex < lineEditors.lastIndex) {
-            lineEditors[cursorRowIndex + 1].matchCursorIndex(preferredCursorIndex)
-            cursorRowIndex++
-            true
-        } else false
-    }
-
-    fun splitLine() {
-        val currentLine = lineEditors.getOrNull(cursorRowIndex)
-        val newLineEditor = currentLine?.splitLine() ?: LineEditor(width)
-        lineEditors.add(cursorRowIndex + 1, newLineEditor)
-        cursorRowIndex++
-        updatePreferredCursorIndex()
-    }
-
-    fun deletePreviousCharOnLine() {
-        val rowIndex = cursorRowIndex
-        val lineEditor = lineEditors[rowIndex]
-        if (lineEditor.deletePreviousChar()) {
-            updatePreferredCursorIndex()
-        } else {
-            if (rowIndex > 0) {
-                val previousLineEditor = lineEditors[rowIndex - 1]
-                previousLineEditor.selectEndAndCombineLine(lineEditor)
-                lineEditor.wash()
-                lineEditors.removeAt(rowIndex)
-                cursorRowIndex--
-                updatePreferredCursorIndex()
-            }
-        }
-    }
-
-    fun insertChar(char: Char) {
-        val rowEditor =
-            if (cursorRowIndex < lineEditors.size) {
-                lineEditors[cursorRowIndex]
+fun BoxContext.lineEditBox(label: String): Box<Void> {
+    val id = randomId()
+    val fillBox = fillBox(primaryDarkSwatch.fillColor)
+    val focusScoreBox = glyphBox('_', secondarySwatch.fillColor)
+    val focusLabelBox = labelBox(label, secondarySwatch.fillColor, Snap.LEFT)
+    val labelBox = labelBox(label, primarySwatch.fillColor, Snap.LEFT)
+    val scoreBox = glyphBox('_', primarySwatch.fillColor)
+    var lineEditor: LineEditor? = null
+    return box(
+        name = "LineBox",
+        render = {
+            val bounds = edge.bounds
+            val editWidth = max(0, bounds.width - 2)
+            val editBounds = bounds.indent(1)
+            val editor = lineEditor ?: LineEditor(editWidth).also { lineEditor = it }
+            fillBox.render(this)
+            if (activeFocusId == id) {
+                focusScoreBox.render(withEdgeBounds(bounds.confineToBottom()))
+                focusLabelBox.render(withEdgeBounds(bounds.confineToTop().indentLeftRight(1)))
             } else {
-                LineEditor(width).also {
-                    lineEditors.add(it)
-                    cursorRowIndex = lineEditors.lastIndex
+                scoreBox.render(withEdgeBounds(bounds.confineToBottom()))
+                if (editor.charCount == 0) {
+                    labelBox.render(withEdgeBounds(bounds.confineToY(1).indentLeftRight(1)))
+                } else {
+                    labelBox.render(withEdgeBounds(bounds.confineToTop().indentLeftRight(1)))
                 }
             }
-        rowEditor.insertChar(char)
-        updatePreferredCursorIndex()
-    }
+            if (editBounds.contains(col, row)) {
+                val editIndex = col - editBounds.left
+                editor.getDisplayChar(editIndex)?.let { setGlyph(it, primaryDarkSwatch.strokeColor, bounds.z) }
+                if (activeFocusId == id) {
+                    if (editor.isCursor(editIndex)) setColor(secondarySwatch.fillColor, bounds.z)
+                }
+            }
+        },
+        focus = {
+            setFocusable(
+                Focusable(
+                    id, edge.bounds, keyReader(id) { stroke ->
+                        when (stroke.keyType) {
+                            KeyType.Character -> stroke.character.also { char ->
+                                if (!char.isISOControl()) lineEditor?.insertChar(char).also { boxScreen.refreshScreen() }
+                            }
+                            KeyType.Backspace -> lineEditor?.deletePreviousChar()?.also { boxScreen.refreshScreen() }
+                            KeyType.ArrowLeft -> lineEditor?.moveLeft().also { boxScreen.refreshScreen() }
+                            KeyType.ArrowRight -> lineEditor?.moveRight().also { boxScreen.refreshScreen() }
+                            else -> Unit
+                        }
+                    })
+            )
+        },
+        setContent = noContent
+    )
 }
 
 fun BoxContext.editBox(): Box<Void> {
@@ -203,9 +93,9 @@ fun BoxContext.editBox(): Box<Void> {
     val textColor = surfaceSwatch.strokeColor
     val highlightColor = secondarySwatch.fillColor
     val id = randomId()
-    var lateEditor: TextEditor? = null
-    fun initEditor(bounds: BoxBounds): TextEditor {
-        return lateEditor ?: TextEditor(bounds.width, bounds.height).also { lateEditor = it }
+    var lateEditor: MemoEditor? = null
+    fun initEditor(bounds: BoxBounds): MemoEditor {
+        return lateEditor ?: MemoEditor(bounds.width, bounds.height).also { lateEditor = it }
     }
     return box(
         name = "EditBox",
@@ -239,11 +129,11 @@ fun BoxContext.editBox(): Box<Void> {
                             if (!char.isISOControl()) lateEditor?.insertChar(char)?.also { boxScreen.refreshScreen() }
                         }
                         KeyType.Backspace -> lateEditor?.deletePreviousCharOnLine()?.also { boxScreen.refreshScreen() }
-                        KeyType.Enter -> lateEditor?.splitLine()?.also { boxScreen.refreshScreen() }
                         KeyType.ArrowUp -> lateEditor?.moveUp().also { boxScreen.refreshScreen() }
                         KeyType.ArrowDown -> lateEditor?.moveDown().also { boxScreen.refreshScreen() }
                         KeyType.ArrowLeft -> lateEditor?.moveLeft().also { boxScreen.refreshScreen() }
                         KeyType.ArrowRight -> lateEditor?.moveRight().also { boxScreen.refreshScreen() }
+                        KeyType.Enter -> lateEditor?.splitLine()?.also { boxScreen.refreshScreen() }
                         else -> Unit
                     }
                 }

@@ -70,6 +70,16 @@ data class BoxBounds(
         return Pair(leftBounds, rightBounds)
     }
 
+    fun indentLeftRight(cols: Int): BoxBounds = copy(left = left + cols, right = right - cols)
+    fun indentTopBottom(rows: Int): BoxBounds = copy(top = top + rows, bottom = bottom - rows)
+    fun indent(size: Int): BoxBounds = indentLeftRight(size).indentTopBottom(size)
+
+    fun confineToBottom(): BoxBounds = copy(top = bottom - 1)
+    fun confineToTop(): BoxBounds = copy(bottom = top + 1)
+    fun confineToY(topOffset: Int): BoxBounds = copy(top = top + topOffset, bottom = top + topOffset + 1)
+    fun confineToOffset(x: Int, y: Int): BoxBounds =
+        copy(left = left + x, right = left + x + 1, top = top + y, bottom = top + y + 1)
+
     fun confine(width: Int, height: Int, snap: Snap): BoxBounds {
         val extraWidth = this.width - width
         val extraHeight = this.height - height
