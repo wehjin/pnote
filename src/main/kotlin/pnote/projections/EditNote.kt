@@ -34,10 +34,12 @@ fun BoxContext.projectEditNote(): SubProjection {
     })
 }
 
-class LineEditor(val width: Int) {
+class LineEditor(
+    private val width: Int,
+    private val chars: MutableList<Char> = mutableListOf()
+) {
     private var leftCharsIndex: Int = 0
     private var cursorCharsIndex: Int = 0
-    private val chars = mutableListOf<Char>()
     private val leftVisibleColumns = 2
 
     fun isCursor(leftInset: Int): Boolean {
@@ -48,6 +50,14 @@ class LineEditor(val width: Int) {
         return if (leftInset == 0 && leftCharsIndex > 0) {
             '\\'
         } else chars.getOrNull(leftCharsIndex + leftInset)
+    }
+
+    fun splitLine(): LineEditor {
+        val tailChars = chars.subList(cursorCharsIndex, chars.size).toMutableList()
+        repeat(tailChars.size) { chars.removeAt(cursorCharsIndex) }
+        leftCharsIndex = 0
+        cursorCharsIndex = 0
+        return LineEditor(width, tailChars)
     }
 
     fun deletePreviousChar() {
@@ -83,7 +93,16 @@ class TextEditor(private val width: Int, private val height: Int) {
         }
     }
 
-    fun getChar(leftInset: Int, topInset: Int): Char? = lineEditors.getOrNull(topInset)?.getDisplayChar(leftInset)
+    fun getChar(leftInset: Int, topInset: Int): Char? {
+        return lineEditors.getOrNull(topInset)?.getDisplayChar(leftInset)
+    }
+
+    fun splitLine() {
+        val currentLine = lineEditors.getOrNull(cursorRowIndex)
+        val newLineEditor = currentLine?.splitLine() ?: LineEditor(width)
+        lineEditors.add(cursorRowIndex + 1, newLineEditor)
+        cursorRowIndex++
+    }
 
     fun deletePreviousCharOnLine() {
         lineEditors.getOrNull(cursorRowIndex)?.deletePreviousChar()
@@ -144,6 +163,7 @@ fun BoxContext.editBox(): Box<Void> {
                             if (!char.isISOControl()) lateEditor?.insertChar(char)?.also { boxScreen.refreshScreen() }
                         }
                         KeyType.Backspace -> lateEditor?.deletePreviousCharOnLine()?.also { boxScreen.refreshScreen() }
+                        KeyType.Enter -> lateEditor?.splitLine()?.also { boxScreen.refreshScreen() }
                         else -> Unit
                     }
                 }
