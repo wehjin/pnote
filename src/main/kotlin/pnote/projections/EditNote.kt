@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import pnote.App
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
+import pnote.projections.sandbox.ButtonBoxOption.*
 import pnote.stories.EditNote
 import pnote.stories.editNoteStory
 import java.lang.Integer.max
@@ -28,31 +29,34 @@ fun BoxContext.projectEditNote(story: Story<EditNote>): SubProjection {
         visionLoop@ for (vision in story.subscribe()) {
             when (vision) {
                 EditNote.FinishedEditing -> break@visionLoop
-                is EditNote.Editing -> projectEditing(vision)
+                is EditNote.Editing -> projectEditing(vision, story)
             }
         }
     })
 }
 
-private fun BoxContext.projectEditing(vision: EditNote.Editing) {
-    val topBar = topBarBox()
+private fun BoxContext.projectEditing(vision: EditNote.Editing, story: Story<EditNote>) {
+    val topBar = topBarBox(onBack = { story.offer(vision.cancel()) })
     val contentBox = contentBox(vision).maxWidth(45, 0f).pad(2, 1)
     val fill = fillBox(backgroundSwatch.fillColor)
     val box = contentBox.packTop(3, topBar).before(fill)
     boxScreen.setBox(box)
 }
 
-private fun BoxContext.topBarBox(): Box<Void> {
+private fun BoxContext.topBarBox(onBack: () -> Unit): Box<Void> {
     val swatch = primaryDarkSwatch
     val title = labelBox("Confidential Note", swatch.strokeColor, Snap.LEFT)
-    val buttonOptions = setOf(
-        BoxOption.SwatchEnabled(swatch),
-        BoxOption.SwatchFocused(primarySwatch),
-        BoxOption.SwatchPressed(primaryLightSwatch)
+    val styleOptions = setOf(
+        EnabledSwatch(swatch),
+        FocusedSwatch(primarySwatch),
+        PressedSwatch(primaryLightSwatch)
     )
-    val saveButton = buttonBox("SAVE", buttonOptions) {}
-    val backButton = buttonBox("<<", buttonOptions) {}
-    val content = title.packRight(6, saveButton).packLeft(6, backButton)
+    val saveButton = buttonBox("SAVE", styleOptions + PressReader {})
+    val backButton = buttonBox(
+        text = "<<",
+        options = styleOptions + SparkReader(Spark.Back) { onBack() } + PressReader { onBack() }
+    )
+    val content = title.packRight(8, saveButton).packLeft(6, backButton)
     val fill = fillBox(swatch.fillColor)
     return content.before(fill)
 }

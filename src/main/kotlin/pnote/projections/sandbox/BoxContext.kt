@@ -7,6 +7,7 @@ import com.googlecode.lanterna.input.KeyType
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import pnote.projections.sandbox.ButtonBoxOption.*
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
@@ -45,45 +46,79 @@ sealed class BoxOption {
     data class SwatchEnabled(val colorSwatch: ColorSwatch) : BoxOption()
     data class SwatchPressed(val colorSwatch: ColorSwatch) : BoxOption()
     data class SwatchFocused(val colorSwatch: ColorSwatch) : BoxOption()
+    data class ReadSpark(val spark: Spark, val block: SparkReadScope.() -> Unit) : BoxOption()
 }
 
 val Set<BoxOption>.swatchEnabled get() = this.firstNotNullResult { (it as? BoxOption.SwatchEnabled) }?.colorSwatch
 val Set<BoxOption>.swatchPressed get() = this.firstNotNullResult { (it as? BoxOption.SwatchPressed) }?.colorSwatch
 val Set<BoxOption>.swatchFocused get() = this.firstNotNullResult { (it as? BoxOption.SwatchFocused) }?.colorSwatch
 
-fun BoxContext.buttonBox(text: String, options: Set<BoxOption>? = null, onPress: () -> Unit): Box<Void> {
-    val swatchEnabled = options?.swatchEnabled ?: surfaceSwatch
-    val swatchPressed = options?.swatchPressed ?: primarySwatch
-    val swatchFocused = options?.swatchFocused ?: primaryLightSwatch
-    val focusableId = randomId()
+sealed class ButtonBoxOption {
+    data class EnabledSwatch(val swatch: ColorSwatch) : ButtonBoxOption()
+    data class FocusedSwatch(val swatch: ColorSwatch) : ButtonBoxOption()
+    data class PressedSwatch(val swatch: ColorSwatch) : ButtonBoxOption()
+    data class SparkReader(val spark: Spark, val block: SparkReadScope.() -> Unit) : ButtonBoxOption()
+    data class PressReader(val block: () -> Unit) : ButtonBoxOption()
+}
+
+inline fun <reified T> Set<ButtonBoxOption>.get(): T? {
+    val optionClass = T::class.java
+    return this.firstOrNull { optionClass.isInstance(it) }?.let { optionClass.cast(it) }
+}
+
+fun BoxContext.buttonBox(text: String, options: Set<ButtonBoxOption> = emptySet()): Box<Void> {
+    val id = randomId()
+    val enabledSwatch = options.get<EnabledSwatch>()?.swatch ?: surfaceSwatch
+    val focusedSwatch = options.get<FocusedSwatch>()?.swatch ?: primaryLightSwatch
+    val pressedSwatch = options.get<PressedSwatch>()?.swatch ?: primarySwatch
+    val pressBlock = options.get<PressReader>()?.block
+    val sparkReader = options.get<SparkReader>()
     var pressed = false
     return box(
         name = "ButtonBox",
         render = {
             val swatch = when {
-                pressed -> swatchPressed
-                activeFocusId == focusableId -> swatchFocused
-                else -> swatchEnabled
+                pressed -> pressedSwatch
+                activeFocusId == id -> focusedSwatch
+                else -> enabledSwatch
             }
             val fill = fillBox(swatch.fillColor)
             val box = labelBox(text.trim(), swatch.strokeColor).before(fill)
             box.render(this)
         },
-        focus = noFocus,
-        setContent = noContent
-    ).focusable(focusableId, false) {
-        if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
-            GlobalScope.launch {
-                pressed = true
-                setChanged(edge.bounds)
-                delay(200)
-                pressed = false
-                setChanged(edge.bounds)
-                delay(100)
-                onPress()
+        focus = {
+            sparkReader?.also {
+                readSpark(sparkReader.spark, sparkReader.block)
             }
-        }
-    }
+            pressBlock?.also {
+                setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+                    if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
+                        GlobalScope.launch {
+                            pressed = true
+                            setChanged(edge.bounds)
+                            delay(200)
+                            pressed = false
+                            setChanged(edge.bounds)
+                            delay(100)
+                            pressBlock()
+                        }
+                    }
+                }))
+            }
+        },
+        setContent = noContent
+    )
+}
+
+@Deprecated(message = "Used ButtonBoxOption variant")
+fun BoxContext.buttonBox(text: String, options: Set<BoxOption>? = null, onPress: () -> Unit): Box<Void> {
+    val buttonOptions = setOf(
+        PressReader(onPress),
+        EnabledSwatch(options?.swatchEnabled ?: surfaceSwatch),
+        FocusedSwatch(options?.swatchFocused ?: primaryLightSwatch),
+        PressedSwatch(options?.swatchPressed ?: primarySwatch)
+    )
+    return buttonBox(text, buttonOptions)
 }
 
 fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {

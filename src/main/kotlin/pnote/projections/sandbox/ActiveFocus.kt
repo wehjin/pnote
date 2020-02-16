@@ -6,14 +6,51 @@ import kotlinx.coroutines.channels.SendChannel
 import java.lang.Integer.max
 import java.lang.Integer.min
 
+class SparkEmitter {
+    private val sparkBlocks = mutableMapOf<Spark, SparkReadScope.() -> Unit>()
+
+    fun addSpark(spark: Spark, reader: SparkReadScope.() -> Unit) {
+        sparkBlocks[spark] = reader
+    }
+
+    fun clear() = sparkBlocks.clear()
+
+    fun emitSpark(keyStroke: KeyStroke): Boolean {
+        return keyStroke.asSpark()?.let { spark ->
+            sparkBlocks[spark]?.let { block ->
+                true.also {
+                    val scope = object : SparkReadScope {
+                        override val spark: Spark = spark
+                    }
+                    scope.run(block)
+                }
+            } ?: false
+        } ?: false
+    }
+
+    private fun KeyStroke.asSpark(): Spark? {
+        return when {
+            keyType == KeyType.Escape && !isCtrlDown && !isShiftDown && !isAltDown -> Spark.Back
+            else -> null
+        }
+    }
+}
+
 class ActiveFocus(private val channel: SendChannel<RenderAction>) {
     var focusId: Long? = null
     val focusables = mutableMapOf<Long, Focusable>()
+    val sparkEmitter = SparkEmitter()
 
     fun update(box: Box<*>, edge: BoxEdge) {
         focusables.clear()
+        sparkEmitter.clear()
         box.focus(object : FocusScope {
             override val edge: BoxEdge = edge
+
+            override fun readSpark(spark: Spark, block: SparkReadScope.() -> Unit) {
+                sparkEmitter.addSpark(spark, block)
+            }
+
             override fun setFocusable(focusable: Focusable) {
                 focusables[focusable.focusableId] = focusable
             }
@@ -29,6 +66,11 @@ class ActiveFocus(private val channel: SendChannel<RenderAction>) {
     }
 
     fun routeKey(keyStroke: KeyStroke) {
+        val emitted = sparkEmitter.emitSpark(keyStroke)
+        if (!emitted) routeKeyToFocus(keyStroke)
+    }
+
+    private fun routeKeyToFocus(keyStroke: KeyStroke) {
         when (keyStroke.keyType) {
             KeyType.ArrowDown, KeyType.ArrowUp -> {
                 val sendKeyToReader = keyReader?.handlesUpDown ?: false

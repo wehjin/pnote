@@ -30,6 +30,7 @@ interface FocusScope {
     val edge: BoxEdge
     fun setChanged(bounds: BoxBounds)
     fun setFocusable(focusable: Focusable)
+    fun readSpark(spark: Spark, block: SparkReadScope.() -> Unit)
 }
 
 interface FocusKeyScope {
@@ -57,3 +58,9 @@ interface KeyReader {
     val handlesUpDown: Boolean
     fun receiveKey(keyStroke: KeyStroke)
 }
+
+interface SparkReadScope {
+    val spark: Spark
+}
+
+enum class Spark { Back }
