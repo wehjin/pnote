@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
+import java.lang.Integer.max
 
 fun main() {
     runBlocking {
@@ -34,26 +35,40 @@ fun BoxContext.projectEditNote(): SubProjection {
 }
 
 class LineEditor(val width: Int) {
-    private var cursorIndex: Int = 0
+    private var leftCharsIndex: Int = 0
+    private var cursorCharsIndex: Int = 0
     private val chars = mutableListOf<Char>()
+    private val leftVisibleColumns = 2
 
-    fun isCursor(leftInset: Int) = cursorIndex == leftInset
+    fun isCursor(leftInset: Int): Boolean {
+        return (cursorCharsIndex - leftCharsIndex) == leftInset
+    }
 
-    fun getChar(leftInset: Int) = chars.getOrNull(leftInset)
+    fun getDisplayChar(leftInset: Int): Char? {
+        return if (leftInset == 0 && leftCharsIndex > 0) {
+            '\\'
+        } else chars.getOrNull(leftCharsIndex + leftInset)
+    }
 
     fun deletePreviousChar() {
-        if (cursorIndex > 0) {
-            cursorIndex -= 1
-            chars.removeAt(cursorIndex)
+        if (cursorCharsIndex > 0) {
+            cursorCharsIndex -= 1
+            chars.removeAt(cursorCharsIndex)
+            if (cursorCharsIndex - leftVisibleColumns < leftCharsIndex) {
+                leftCharsIndex = max(0, cursorCharsIndex - leftVisibleColumns)
+            }
         }
     }
 
     fun insertChar(char: Char) {
-        val oldIndex = cursorIndex
+        val oldIndex = cursorCharsIndex
         val newCharIndex =
             if (oldIndex < chars.size) oldIndex.also { chars.add(it, char) }
             else chars.size.also { chars.add(char) }
-        cursorIndex = newCharIndex + 1
+        cursorCharsIndex = newCharIndex + 1
+        if (cursorCharsIndex > (leftCharsIndex + width - 1)) {
+            leftCharsIndex = cursorCharsIndex - width + 1
+        }
     }
 }
 
@@ -68,7 +83,7 @@ class TextEditor(private val width: Int, private val height: Int) {
         }
     }
 
-    fun getChar(leftInset: Int, topInset: Int): Char? = lineEditors.getOrNull(topInset)?.getChar(leftInset)
+    fun getChar(leftInset: Int, topInset: Int): Char? = lineEditors.getOrNull(topInset)?.getDisplayChar(leftInset)
 
     fun deletePreviousCharOnLine() {
         lineEditors.getOrNull(cursorRowIndex)?.deletePreviousChar()
