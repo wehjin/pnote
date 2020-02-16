@@ -5,6 +5,9 @@ class MemoEditor(private val width: Int, private val height: Int) {
     private var preferredCursorIndex = 0
     private val lineEditors = mutableListOf(LineEditor(width))
 
+    val hasChars: Boolean
+        get() = lineEditors.firstOrNull { it.charCount > 0 } != null
+
     fun isCursor(leftInset: Int, topInset: Int): Boolean {
         return if (topInset != this.cursorRowIndex) false else {
             val lineEditor = lineEditors.getOrNull(topInset)

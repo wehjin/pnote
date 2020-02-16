@@ -1,5 +1,7 @@
 package pnote.projections.sandbox
 
+import java.lang.Integer.max
+
 data class BoxBounds(
     var right: Int = 0,
     var bottom: Int = 0,
@@ -7,8 +9,8 @@ data class BoxBounds(
     var top: Int = 0,
     var z: Int = 0
 ) {
-    val width: Int get() = right - left
-    val height: Int get() = bottom - top
+    val width: Int get() = max(0, right - left)
+    val height: Int get() = max(0, bottom - top)
 
     val centerY: Int get() = top + height / 2
 
@@ -38,6 +40,7 @@ data class BoxBounds(
     fun insetX(cols: Int): BoxBounds = copy(left = left + cols, right = right - cols)
     fun insetY(rows: Int): BoxBounds = copy(top = top + rows, bottom = bottom - rows)
     fun insetXY(size: Int): BoxBounds = insetX(size).insetY(size)
+    fun insetXY(cols: Int, rows: Int): BoxBounds = insetX(cols).insetY(rows)
 
     fun partitionTop(height: Int): Pair<BoxBounds, BoxBounds> {
         val middle = top + height

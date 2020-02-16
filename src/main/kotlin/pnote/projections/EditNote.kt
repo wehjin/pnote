@@ -12,7 +12,6 @@ import pnote.projections.sandbox.*
 import pnote.projections.sandbox.ButtonBoxOption.*
 import pnote.stories.EditNote
 import pnote.stories.editNoteStory
-import java.lang.Integer.max
 
 fun main() {
     runBlocking {
@@ -37,7 +36,7 @@ fun BoxContext.projectEditNote(story: Story<EditNote>): SubProjection {
 
 private fun BoxContext.projectEditing(vision: EditNote.Editing, story: Story<EditNote>) {
     val topBar = topBarBox(onBack = { story.offer(vision.cancel()) })
-    val contentBox = contentBox(vision).maxWidth(45, 0f).pad(2, 1)
+    val contentBox = contentBox(vision).maxWidth(45, 0f).pad(6, 1)
     val fill = fillBox(backgroundSwatch.fillColor)
     val box = contentBox.packTop(3, topBar).before(fill)
     boxScreen.setBox(box)
@@ -69,37 +68,29 @@ private fun BoxContext.contentBox(vision: EditNote.Editing): Box<Void> {
 
 fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
     val id = randomId()
-    val fillBox = fillBox(primaryDarkSwatch.fillColor)
-    val focusScoreBox = glyphBox('_', secondarySwatch.fillColor)
-    val focusLabelBox = labelBox(label, secondarySwatch.fillColor, Snap.LEFT)
-    val labelBox = labelBox(label, primarySwatch.fillColor, Snap.LEFT)
-    val scoreBox = glyphBox('_', primarySwatch.fillColor)
     var lineEditor: LineEditor? = null
+    fun initEditor(width: Int): LineEditor {
+        return lineEditor ?: LineEditor(width, line.toCharSequence().toMutableList()).also { lineEditor = it }
+    }
+
     return box(
         name = "LineBox",
         render = {
             val bounds = edge.bounds
-            val editWidth = max(0, bounds.width - 2)
             val editBounds = bounds.insetXY(1)
-            val editor = lineEditor
-                ?: LineEditor(editWidth, line.toCharSequence().toMutableList()).also { lineEditor = it }
-            fillBox.render(this)
+            val editor = initEditor(editBounds.width)
             if (activeFocusId == id) {
-                focusScoreBox.render(withEdgeBounds(bounds.confineToBottom()))
-                focusLabelBox.render(withEdgeBounds(bounds.confineToTop().insetX(1)))
+                focusedEditFrame(label).render(this)
             } else {
-                scoreBox.render(withEdgeBounds(bounds.confineToBottom()))
-                if (editor.charCount == 0) {
-                    labelBox.render(withEdgeBounds(bounds.confineToY(1).insetX(1)))
-                } else {
-                    labelBox.render(withEdgeBounds(bounds.confineToTop().insetX(1)))
-                }
+                unfocusedEditFrame(label, editor.charCount > 0).render(this)
             }
             if (editBounds.contains(col, row)) {
                 val editIndex = col - editBounds.left
-                editor.getDisplayChar(editIndex)?.let { setGlyph(it, primaryDarkSwatch.strokeColor, bounds.z) }
-                if (activeFocusId == id) {
-                    if (editor.isCursor(editIndex)) setColor(secondarySwatch.fillColor, bounds.z)
+                if (activeFocusId == id && editor.isCursor(editIndex)) {
+                    setColor(secondarySwatch.fillColor, bounds.z)
+                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, secondarySwatch.strokeColor, bounds.z) }
+                } else {
+                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, primaryDarkSwatch.strokeColor, bounds.z) }
                 }
             }
         },
@@ -124,32 +115,34 @@ fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
 }
 
 fun BoxContext.editBox(): Box<Void> {
-    val surfaceColor = primaryDarkSwatch.fillColor
-    val textColor = surfaceSwatch.strokeColor
-    val highlightColor = secondarySwatch.fillColor
     val id = randomId()
     var lateEditor: MemoEditor? = null
     fun initEditor(bounds: BoxBounds): MemoEditor {
         return lateEditor ?: MemoEditor(bounds.width, bounds.height).also { lateEditor = it }
     }
+
+    val textColor = primaryDarkSwatch.strokeColor
+    val cursorSwatch = secondarySwatch
+    val label = "Body"
     return box(
         name = "EditBox",
         render = {
             val bounds = edge.bounds
-            if (bounds.contains(col, row)) {
-                setColor(surfaceColor, bounds.z)
-                val editor = initEditor(bounds)
-                if (row == bounds.bottom - 1) {
-                    if (activeFocusId == id) setGlyph('_', highlightColor, bounds.z)
+            val editBounds = bounds.insetXY(1)
+            val editor = initEditor(editBounds)
+            if (activeFocusId == id) {
+                focusedEditFrame(label).render(this)
+            } else {
+                unfocusedEditFrame(label, editor.hasChars).render(this)
+            }
+            if (editBounds.contains(col, row)) {
+                val leftInset = col - editBounds.left
+                val topInset = row - editBounds.top
+                if (activeFocusId == id && editor.isCursor(leftInset, topInset)) {
+                    setColor(cursorSwatch.fillColor, bounds.z)
+                    editor.getChar(leftInset, topInset)?.let { setGlyph(it, cursorSwatch.strokeColor, bounds.z) }
                 } else {
-                    val leftInset = col - bounds.left
-                    val topInset = row - bounds.top
                     editor.getChar(leftInset, topInset)?.let { setGlyph(it, textColor, bounds.z) }
-                    if (activeFocusId == id) {
-                        if (row == bounds.bottom - 1) setGlyph('_', highlightColor, bounds.z)
-                        val isCursor = editor.isCursor(leftInset, topInset)
-                        if (isCursor) setCursor(col, row)
-                    }
                 }
             }
         },
