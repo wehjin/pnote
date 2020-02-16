@@ -23,24 +23,44 @@ fun main() {
     }
 }
 
-private const val actionSideWidth = 25
-
 fun BoxContext.projectEditNote(story: Story<EditNote>): SubProjection {
     return SubProjection(story.name, GlobalScope.launch {
         visionLoop@ for (vision in story.subscribe()) {
             when (vision) {
                 EditNote.FinishedEditing -> break@visionLoop
-                is EditNote.Editing -> {
-                    val titleRow = lineEditBox("Note Title", vision.title).maxHeight(3)
-                    val contentRow = editBox().packBottom(4, gapBox())
-                    val infoSide = contentRow.packTop(4, titleRow).maxWidth(30).packTop(4, gapBox())
-                    val actionSide = messageBox("Actions", primaryDarkSwatch)
-                    val box = infoSide.packRight(actionSideWidth, actionSide)
-                    boxScreen.setBox(box)
-                }
+                is EditNote.Editing -> projectEditing(vision)
             }
         }
     })
+}
+
+private fun BoxContext.projectEditing(vision: EditNote.Editing) {
+    val topBar = topBarBox()
+    val contentBox = contentBox(vision).maxWidth(45, 0f).pad(2, 1)
+    val fill = fillBox(backgroundSwatch.fillColor)
+    val box = contentBox.packTop(3, topBar).before(fill)
+    boxScreen.setBox(box)
+}
+
+private fun BoxContext.topBarBox(): Box<Void> {
+    val swatch = primaryDarkSwatch
+    val title = labelBox("Confidential Note", swatch.strokeColor, Snap.LEFT)
+    val buttonOptions = setOf(
+        BoxOption.SwatchEnabled(swatch),
+        BoxOption.SwatchFocused(primarySwatch),
+        BoxOption.SwatchPressed(primaryLightSwatch)
+    )
+    val saveButton = buttonBox("SAVE", buttonOptions) {}
+    val backButton = buttonBox("<<", buttonOptions) {}
+    val content = title.packRight(6, saveButton).packLeft(6, backButton)
+    val fill = fillBox(swatch.fillColor)
+    return content.before(fill)
+}
+
+private fun BoxContext.contentBox(vision: EditNote.Editing): Box<Void> {
+    val titleRow = lineEditBox("Title", vision.title).maxHeight(3)
+    val contentRow = editBox().packBottom(4, gapBox())
+    return contentRow.packTop(4, titleRow)
 }
 
 fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
@@ -56,19 +76,19 @@ fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
         render = {
             val bounds = edge.bounds
             val editWidth = max(0, bounds.width - 2)
-            val editBounds = bounds.indent(1)
+            val editBounds = bounds.insetXY(1)
             val editor = lineEditor
                 ?: LineEditor(editWidth, line.toCharSequence().toMutableList()).also { lineEditor = it }
             fillBox.render(this)
             if (activeFocusId == id) {
                 focusScoreBox.render(withEdgeBounds(bounds.confineToBottom()))
-                focusLabelBox.render(withEdgeBounds(bounds.confineToTop().indentLeftRight(1)))
+                focusLabelBox.render(withEdgeBounds(bounds.confineToTop().insetX(1)))
             } else {
                 scoreBox.render(withEdgeBounds(bounds.confineToBottom()))
                 if (editor.charCount == 0) {
-                    labelBox.render(withEdgeBounds(bounds.confineToY(1).indentLeftRight(1)))
+                    labelBox.render(withEdgeBounds(bounds.confineToY(1).insetX(1)))
                 } else {
-                    labelBox.render(withEdgeBounds(bounds.confineToTop().indentLeftRight(1)))
+                    labelBox.render(withEdgeBounds(bounds.confineToTop().insetX(1)))
                 }
             }
             if (editBounds.contains(col, row)) {
@@ -100,7 +120,7 @@ fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
 }
 
 fun BoxContext.editBox(): Box<Void> {
-    val surfaceColor = surfaceSwatch.fillColor
+    val surfaceColor = primaryDarkSwatch.fillColor
     val textColor = surfaceSwatch.strokeColor
     val highlightColor = secondarySwatch.fillColor
     val id = randomId()

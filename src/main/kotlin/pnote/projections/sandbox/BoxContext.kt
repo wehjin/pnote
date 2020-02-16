@@ -60,15 +60,14 @@ fun BoxContext.buttonBox(text: String, options: Set<BoxOption>? = null, onPress:
     return box(
         name = "ButtonBox",
         render = {
-            val label = if (pressed) "\" $text \"" else " $text "
             val swatch = when {
                 pressed -> swatchPressed
                 activeFocusId == focusableId -> swatchFocused
                 else -> swatchEnabled
             }
-            labelBox(label, swatch.strokeColor)
-                .before(fillBox(swatch.fillColor).maxWidth(text.length + 2, 0.5f))
-                .render(this)
+            val fill = fillBox(swatch.fillColor)
+            val box = labelBox(text.trim(), swatch.strokeColor).before(fill)
+            box.render(this)
         },
         focus = noFocus,
         setContent = noContent

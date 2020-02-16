@@ -35,8 +35,9 @@ data class BoxBounds(
     fun shiftZ(delta: Int): BoxBounds =
         copy(z = z + delta)
 
-    fun inset(delta: Int): BoxBounds =
-        copy(left = left + delta, right = right - delta, top = top + delta, bottom = bottom - delta)
+    fun insetX(cols: Int): BoxBounds = copy(left = left + cols, right = right - cols)
+    fun insetY(rows: Int): BoxBounds = copy(top = top + rows, bottom = bottom - rows)
+    fun insetXY(size: Int): BoxBounds = insetX(size).insetY(size)
 
     fun partitionTop(height: Int): Pair<BoxBounds, BoxBounds> {
         val middle = top + height
@@ -69,10 +70,6 @@ data class BoxBounds(
         val rightBounds = BoxBounds(right, bottom, middle, top)
         return Pair(leftBounds, rightBounds)
     }
-
-    fun indentLeftRight(cols: Int): BoxBounds = copy(left = left + cols, right = right - cols)
-    fun indentTopBottom(rows: Int): BoxBounds = copy(top = top + rows, bottom = bottom - rows)
-    fun indent(size: Int): BoxBounds = indentLeftRight(size).indentTopBottom(size)
 
     fun confineToBottom(): BoxBounds = copy(top = bottom - 1)
     fun confineToTop(): BoxBounds = copy(bottom = top + 1)
