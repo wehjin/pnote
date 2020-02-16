@@ -38,6 +38,7 @@ data class BoxBounds(
         copy(z = z + delta)
 
     fun insetX(cols: Int): BoxBounds = copy(left = left + cols, right = right - cols)
+    fun insetX(colsLeft: Int, colsRight: Int): BoxBounds = copy(left = left + colsLeft, right = right - colsRight)
     fun insetY(rows: Int): BoxBounds = copy(top = top + rows, bottom = bottom - rows)
     fun insetXY(size: Int): BoxBounds = insetX(size).insetY(size)
     fun insetXY(cols: Int, rows: Int): BoxBounds = insetX(cols).insetY(rows)

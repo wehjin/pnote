@@ -81,6 +81,7 @@ fun <T, U> Box<T>.before(box: Box<U>): Box<Void> = box(
 
 fun <T> Box<T>.pad(size: Int): Box<T> = mapEdge { it.insetXY(size) }
 fun <T> Box<T>.pad(cols: Int, rows: Int): Box<T> = mapEdge { it.insetX(cols).insetY(rows) }
+fun <T> Box<T>.padX(left: Int, right: Int): Box<T> = mapEdge { it.insetX(left, right) }
 fun <T> Box<T>.padX(cols: Int): Box<T> = mapEdge { it.insetX(cols) }
 fun <T> Box<T>.padY(rows: Int): Box<T> = mapEdge { it.insetY(rows) }
 

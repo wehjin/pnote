@@ -36,7 +36,7 @@ fun BoxContext.projectEditNote(story: Story<EditNote>): SubProjection {
 
 private fun BoxContext.projectEditing(vision: EditNote.Editing, story: Story<EditNote>) {
     val topBar = topBarBox(onBack = { story.offer(vision.cancel()) })
-    val contentBox = contentBox(vision).maxWidth(45, 0f).pad(6, 1)
+    val contentBox = contentBox(vision).maxWidth(60, 0f).pad(6, 1)
     val fill = fillBox(backgroundSwatch.fillColor)
     val box = contentBox.packTop(3, topBar).before(fill)
     boxScreen.setBox(box)
