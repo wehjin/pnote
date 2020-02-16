@@ -44,6 +44,10 @@ class LineEditor(
 
     val cursorIndex: Int get() = cursorCharsIndex
 
+    fun wash() {
+        if (chars.size > 0) chars.random()
+    }
+
     fun isCursor(leftInset: Int): Boolean {
         return (cursorCharsIndex - leftCharsIndex) == leftInset
     }
@@ -71,6 +75,11 @@ class LineEditor(
         return LineEditor(width, tailChars)
     }
 
+    fun selectEndAndCombineLine(lineEditor: LineEditor) {
+        matchCursorIndex(chars.size)
+        chars.addAll(lineEditor.chars)
+    }
+
     fun moveLeft(): Boolean =
         if (cursorCharsIndex > 0) {
             cursorCharsIndex -= 1
@@ -90,11 +99,10 @@ class LineEditor(
         } else false
     }
 
-    fun deletePreviousChar() {
+    fun deletePreviousChar(): Boolean =
         if (moveLeft()) {
-            chars.removeAt(cursorCharsIndex)
-        }
-    }
+            true.also { chars.removeAt(cursorCharsIndex) }
+        } else false
 
     fun insertChar(char: Char) {
         if (cursorCharsIndex == chars.size) {
@@ -159,8 +167,20 @@ class TextEditor(private val width: Int, private val height: Int) {
     }
 
     fun deletePreviousCharOnLine() {
-        lineEditors.getOrNull(cursorRowIndex)?.deletePreviousChar()
-        updatePreferredCursorIndex()
+        val rowIndex = cursorRowIndex
+        val lineEditor = lineEditors[rowIndex]
+        if (lineEditor.deletePreviousChar()) {
+            updatePreferredCursorIndex()
+        } else {
+            if (rowIndex > 0) {
+                val previousLineEditor = lineEditors[rowIndex - 1]
+                previousLineEditor.selectEndAndCombineLine(lineEditor)
+                lineEditor.wash()
+                lineEditors.removeAt(rowIndex)
+                cursorRowIndex--
+                updatePreferredCursorIndex()
+            }
+        }
     }
 
     fun insertChar(char: Char) {
