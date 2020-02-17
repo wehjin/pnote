@@ -19,17 +19,8 @@ fun cipherLoad(password: CharArray, plainLoad: PlainLoad): CipherLoad {
 
 fun plainLoad(password: CharArray, cipherLoad: CipherLoad): PlainLoad? = try {
     val flippable = cipherLoad.asFlippable()
-    val plainBytes = flip(
-        flippable,
-        FlipDirection.Decrypt,
-        password
-    )
-    PlainLoad(
-        plainBytes,
-        cipherLoad.cipherType,
-        cipherLoad.salt,
-        cipherLoad.iv
-    )
+    val plainBytes = flip(flippable, FlipDirection.Decrypt, password)
+    PlainLoad(plainBytes, cipherLoad.cipherType, cipherLoad.salt, cipherLoad.iv)
 } catch (e: Throwable) {
     null
 }

@@ -27,16 +27,15 @@ fun AppScope.browseNotesStory(): Story<BrowseNotes> = matchingStory(
             init(this)
         }
         on<AddNote, BrowseNotes, Browsing> {
-            noteBag.createNote(vision.password, Note.Basic(action.title))
+            val title = StringHandle(action.title)
+            title.use { noteBag.createNote(vision.password, Note.Basic(title)) }
             init(this)
         }
         on<ViewNote, BrowseNotes, Browsing> {
             val banner = vision.banners.firstOrNull { it.noteId == action.noteId } as? Banner.Basic
-            if (banner == null) {
-                vision
-            } else {
-                val title = StringHandle(banner.title.trim())
-                val substory = noteDetailsStory(title)
+            if (banner == null) vision
+            else {
+                val substory = noteDetailsStory(vision.password, action.noteId, banner.title)
                 whenSubstoryEnds(substory) { offer(Reload) }
                 AwaitingDetails(substory)
             }
@@ -78,6 +77,7 @@ sealed class BrowseNotes() {
 }
 
 private sealed class BrowseNotesAction {
+
     object Cancel : BrowseNotesAction()
     object Reload : BrowseNotesAction()
     data class AddNote(val title: String) : BrowseNotesAction()

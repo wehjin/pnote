@@ -4,17 +4,31 @@ import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import pnote.App
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
 import pnote.projections.sandbox.ButtonBoxOption.*
+import pnote.scopes.AppScope
 import pnote.stories.NoteDetails
 import pnote.stories.NoteDetails.*
 import pnote.stories.noteDetailsStory
+import pnote.tools.*
+import pnote.userDir
 
 fun main() {
-    val app = App("pnote", "note-details-test")
-    val story = app.noteDetailsStory(StringHandle("A Title"))
+    val password = password("a")
+    val initNote = Note.Basic(
+        title = StringHandle("Ho ho ho"),
+        body = StringHandle("Full of sound and fury, signifying nothing"),
+        noteId = 1001
+    )
+    val app = object : AppScope {
+        override val logTag: String = "note-details-projection-test"
+        override val cryptor: Cryptor = memCryptor(password, password)
+        override val noteBag: NoteBag = FileNoteBag(userDir("pnotes", logTag), cryptor)
+    }
+    app.noteBag.updateNote(password, initNote)
+
+    val story = app.noteDetailsStory(password, initNote.noteId, initNote.title)
     val boxContext = mainBoxContext()
     runBlocking { boxContext.projectNoteDetails(story).job.join() }
     boxContext.boxScreen.close()

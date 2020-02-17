@@ -5,17 +5,36 @@ import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import pnote.App
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
 import pnote.projections.sandbox.ButtonBoxOption.*
+import pnote.scopes.AppScope
 import pnote.stories.EditNote
 import pnote.stories.editNoteStory
+import pnote.tools.*
+import pnote.userDir
 
 fun main() {
     runBlocking {
-        val app = App("pnotes", "edit-note-projection")
-        val editNoteStory = app.editNoteStory(StringHandle("Hohoho"))
+        val password = password("a")
+        val initNote = Note.Basic(
+            title = StringHandle("Ho ho ho"),
+            body = StringHandle("Full of sound and fury, signifying nothing"),
+            noteId = 1001
+        )
+        val app = object : AppScope {
+            private val commandName = "pnotes"
+            private val userName = "edit-note-projection"
+            private val userDir = userDir(commandName, userName)
+            override val cryptor: Cryptor = memCryptor(password, password)
+            override val noteBag: NoteBag = FileNoteBag(userDir, cryptor)
+            override val logTag: String = "$commandName/$userName"
+        }
+        try {
+            app.noteBag.createNote(password, initNote)
+        } catch (e: Throwable) {
+        }
+        val editNoteStory = app.editNoteStory(password, initNote.noteId)
         val boxContext = mainBoxContext()
         val editNoteProjection = boxContext.projectEditNote(editNoteStory)
         editNoteProjection.job.join().also { boxContext.boxScreen.close() }
@@ -34,14 +53,27 @@ fun BoxContext.projectEditNote(story: Story<EditNote>): SubProjection {
 }
 
 private fun BoxContext.projectEditing(vision: EditNote.Editing, story: Story<EditNote>) {
-    val topBar = topBarBox(onBack = { story.offer(vision.cancel()) })
-    val contentBox = contentBox(vision).maxWidth(60, 0f).pad(6, 1)
+    var title: List<Char>? = null
+    val contentBox = contentBox(vision) { title = it }
+    val contentBar = contentBox.maxWidth(60, 0f).pad(6, 1)
+    val topBar = topBarBox(
+        onBack = { story.offer(vision.cancel()) },
+        onSave = {
+            title?.let {
+                val action = vision.save(
+                    title = StringHandle(String(it.toCharArray())),
+                    body = StringHandle(String(it.toCharArray()))
+                )
+                story.offer(action)
+            }
+        }
+    )
     val fill = fillBox(backgroundSwatch.fillColor)
-    val box = contentBox.packTop(3, topBar).before(fill)
+    val box = contentBar.packTop(3, topBar).before(fill)
     boxScreen.setBox(box)
 }
 
-private fun BoxContext.topBarBox(onBack: () -> Unit): Box<Void> {
+private fun BoxContext.topBarBox(onBack: () -> Unit, onSave: () -> Unit): Box<Void> {
     val swatch = primaryDarkSwatch
     val title = labelBox("Confidential Note", swatch.strokeColor, Snap.LEFT)
     val styleOptions = setOf(
@@ -49,7 +81,7 @@ private fun BoxContext.topBarBox(onBack: () -> Unit): Box<Void> {
         FocusedSwatch(primarySwatch),
         PressedSwatch(primaryLightSwatch)
     )
-    val saveButton = buttonBox("SAVE", styleOptions + PressReader {})
+    val saveButton = buttonBox("SAVE", styleOptions + PressReader { onSave() })
     val backButton = buttonBox(
         text = "<<",
         options = styleOptions + SparkReader(Spark.Back) { onBack() } + PressReader { onBack() }
@@ -59,18 +91,19 @@ private fun BoxContext.topBarBox(onBack: () -> Unit): Box<Void> {
     return content.before(fill)
 }
 
-private fun BoxContext.contentBox(vision: EditNote.Editing): Box<Void> {
-    val titleRow = lineEditBox("Title", vision.title).maxHeight(3)
-    val contentRow = editBox().packBottom(4, gapBox())
+private fun BoxContext.contentBox(vision: EditNote.Editing, onTitleEdit: (List<Char>) -> Unit): Box<Void> {
+    val note = vision.note as Note.Basic
+    val titleBox = lineEditBox("Title", note.title, onTitleEdit)
+    val titleRow = titleBox.maxHeight(3)
+    val contentRow = editBox(note.body).packBottom(4, gapBox())
     return contentRow.packTop(4, titleRow)
 }
 
-fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
+fun BoxContext.lineEditBox(label: String, line: StringHandle, onChange: (List<Char>) -> Unit): Box<Void> {
     val id = randomId()
     var lineEditor: LineEditor? = null
-    fun initEditor(width: Int): LineEditor {
-        return lineEditor ?: LineEditor(width, line.toCharSequence().toMutableList()).also { lineEditor = it }
-    }
+    fun initEditor(width: Int): LineEditor = lineEditor
+        ?: LineEditor(width, line.toCharSequence().toMutableList(), onChange).also { lineEditor = it }
 
     return box(
         name = "LineBox",
@@ -125,12 +158,16 @@ fun BoxContext.lineEditBox(label: String, line: StringHandle): Box<Void> {
     )
 }
 
-fun BoxContext.editBox(): Box<Void> {
+fun BoxContext.editBox(body: StringHandle): Box<Void> {
+
     val id = randomId()
     var lateEditor: MemoEditor? = null
-    fun initEditor(bounds: BoxBounds): MemoEditor {
-        return lateEditor ?: MemoEditor(bounds.width, bounds.height).also { lateEditor = it }
-    }
+    fun initEditor(bounds: BoxBounds): MemoEditor = lateEditor
+        ?: MemoEditor(
+            width = bounds.width,
+            height = bounds.height,
+            initMemo = body.toCharSequence().toMutableList()
+        ).also { lateEditor = it }
 
     val textColor = primaryDarkSwatch.strokeColor
     val cursorSwatch = secondarySwatch

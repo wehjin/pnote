@@ -9,18 +9,25 @@ import pnote.projections.StringHandle
 import pnote.scopes.AppScope
 import pnote.stories.NoteDetails.*
 import pnote.stories.NoteDetailsAction.*
+import pnote.tools.Note
+import pnote.tools.Password
 
 
-fun AppScope.noteDetailsStory(title: StringHandle): Story<NoteDetails> {
+fun AppScope.noteDetailsStory(password: Password, noteId: Long, title: StringHandle): Story<NoteDetails> {
     return matchingStory(
         name = "NoteDetails",
         toFirstVision = { Viewing(title) },
         isLastVision = { it is FinishedViewing },
         updateRules = {
             onAction<Cancel, NoteDetails> { FinishedViewing }
-            onAction<Reload, NoteDetails> { Viewing(StringHandle("Reloaded title")) }
+
+            onAction<Reload, NoteDetails> {
+                val note = noteBag.readNote(password, noteId) as Note.Basic
+                Viewing(note.title)
+            }
+
             on<Edit, NoteDetails, Viewing> {
-                val substory = editNoteStory(action.title)
+                val substory = editNoteStory(password, noteId)
                 offerWhenStoryEnds(substory) { Reload }
                 Editing(substory)
             }

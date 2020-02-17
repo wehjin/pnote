@@ -1,9 +1,12 @@
 package pnote.projections
 
-class MemoEditor(private val width: Int, private val height: Int) {
+class MemoEditor(
+    private val width: Int, private val height: Int,
+    initMemo: MutableList<Char> = mutableListOf()
+) {
     private var cursorRowIndex = 0
     private var preferredCursorIndex = 0
-    private val lineEditors = mutableListOf(LineEditor(width))
+    private val lineEditors = mutableListOf(LineEditor(width, initMemo, null))
 
     val hasChars: Boolean
         get() = lineEditors.firstOrNull { it.charCount > 0 } != null

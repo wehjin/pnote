@@ -2,6 +2,7 @@ package pnote.tools
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import pnote.projections.StringHandle
 
 internal class FileNoteBagTest {
 
@@ -22,7 +23,7 @@ internal class FileNoteBagTest {
 
     @Test
     internal fun `bag adds and removes notes`() {
-        val noteId = bag.createNote(secret, Note.Basic("hello"))
+        val noteId = bag.createNote(secret, Note.Basic(StringHandle("hello")))
         assertEquals(1, bag.readBanners().banners.size)
 
         bag.deleteNote(noteId, secret)
@@ -31,10 +32,10 @@ internal class FileNoteBagTest {
 
     @Test
     internal fun `bag updates notes`() {
-        val noteId = bag.createNote(secret, Note.Basic("hello"))
+        val noteId = bag.createNote(secret, Note.Basic(StringHandle("hello")))
         val note = bag.readNote(secret, noteId) as Note.Basic
-        bag.updateNote(secret, note.copy(title = "Goodbye"))
+        bag.updateNote(secret, note.copy(title = StringHandle("Goodbye")))
         val newNote = bag.readNote(secret, noteId) as Note.Basic
-        assertEquals("Goodbye", newNote.title)
+        assertEquals(StringHandle("Goodbye"), newNote.title)
     }
 }

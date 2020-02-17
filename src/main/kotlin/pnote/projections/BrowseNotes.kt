@@ -39,7 +39,8 @@ fun BoxContext.projectBrowsing(story: Story<BrowseNotes>, browsing: BrowseNotes.
     val pageUnderlay = pageTitle.before(pageBackground)
 
     val banners = browsing.banners.toList()
-    val items = banners.map { (it as Banner.Basic).title } + "Add Note"
+    // TODO: Make items a List<StringHandle>
+    val items = banners.map { (it as Banner.Basic).title.toCharSequence().toString() } + "Add Note"
     val itemList = listBox(items) { index ->
         when (index) {
             items.lastIndex -> story.offer(browsing.addNote("Another note"))
