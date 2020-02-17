@@ -5,28 +5,34 @@ import pnote.tools.security.load.*
 import java.io.File
 import java.util.*
 
-class CipherItem(
-    private val file: File
-) {
-    val id: String by lazy { file.nameWithoutExtension }
-    private val cipherLoadItemType: Pair<CipherLoad, ItemType<*>> by lazy { decode(file) }
-    private val cipherLoad: CipherLoad get() = cipherLoadItemType.first
+fun <T : Any> writeCipherFile(hostDir: File, password: CharArray, plainItem: PlainItem<T>): CipherFile {
+    val cipherLoad = cipherLoad(password, PlainLoad(plainItem.bytes, CipherType.Main))
+    val file = File(hostDir, plainItem.id).apply { writeText(encode(cipherLoad, plainItem.type)) }
+    return CipherFile(file)
+}
 
-    fun <T : Any> get(password: CharArray, itemType: ItemType<T>): T = map(password, itemType) { plainValue }
+class CipherFile(private val file: File) {
+
+    val id: String by lazy { file.nameWithoutExtension }
+
+    private val cipherLoadPlainType: Pair<CipherLoad, PlainType<*>> by lazy { decode(file) }
+    private val cipherLoad: CipherLoad get() = cipherLoadPlainType.first
+
+    fun <T : Any> get(password: CharArray, plainType: PlainType<T>): T = map(password, plainType) { plainValue }
 
     fun <T : Any, R> map(
         password: CharArray,
-        itemType: ItemType<T>,
+        plainType: PlainType<T>,
         block: ItemVisitScope<T>.() -> R
     ): R {
-        require(itemType == cipherLoadItemType.second)
+        require(plainType == cipherLoadPlainType.second)
         val plainLoad = plainLoad(password, cipherLoad) ?: error("Invalid password or item file")
-        return PlainItem(itemType, plainLoad.plainBytes, id)
+        return PlainItem(plainType, plainLoad.plainBytes, id)
             .use { plainItem ->
                 val scope = object : ItemVisitScope<T> {
                     override val itemId: String = id
                     override val plainBytes get() = plainItem.bytes
-                    override val plainValue: T get() = plainItem.asValue(itemType.valueClass)
+                    override val plainValue: T get() = plainItem.asValue(plainType.valueClass)
                 }
                 scope.block()
             }
@@ -43,31 +49,8 @@ interface ItemVisitScope<T : Any> {
     val plainValue: T
 }
 
-fun <T : Any> cipherItem(hostDir: File, password: CharArray, plainItem: PlainItem<T>): CipherItem {
-    val cipherLoad = cipherLoad(
-        password,
-        PlainLoad(plainItem.bytes, CipherType.Main)
-    )
-    return CipherItem(
-        file = File(hostDir, plainItem.id).apply {
-            writeText(
-                encode(
-                    cipherLoad,
-                    plainItem.type
-                )
-            )
-        }
-    )
-}
 
-fun cipherItem(hostDir: File, id: String): CipherItem? {
-    val itemFile = File(hostDir, id)
-    return if (itemFile.exists() && itemFile.isFile) {
-        CipherItem(itemFile)
-    } else null
-}
-
-fun decode(file: File): Pair<CipherLoad, ItemType<*>> {
+fun decode(file: File): Pair<CipherLoad, PlainType<*>> {
     val jsonObject = Klaxon().parseJsonObject(file.bufferedReader())
     val itemType = decodeItemType(jsonObject.string("itemType"))
     val cipherLoad = CipherLoad(
@@ -79,9 +62,9 @@ fun decode(file: File): Pair<CipherLoad, ItemType<*>> {
     return Pair(cipherLoad, itemType)
 }
 
-private fun decodeItemType(string: String?): ItemType<*> =
+private fun decodeItemType(string: String?): PlainType<*> =
     when (string) {
-        "string" -> ItemType.Text
+        "string" -> PlainType.Text
         else -> error("invalid item type $string")
     }
 
@@ -97,10 +80,10 @@ private fun decodeByteArray(string: String?): ByteArray = try {
     error("invalid byte array $string")
 }
 
-private fun <T : Any> encode(cipherLoad: CipherLoad, itemType: ItemType<T>): String =
+private fun <T : Any> encode(cipherLoad: CipherLoad, plainType: PlainType<T>): String =
     """
         {
-            "itemType": "${encode(itemType)}",
+            "itemType": "${encode(plainType)}",
             "cipherType": "${encode(cipherLoad.cipherType)}",
             "iv":   "${encode(cipherLoad.iv)}",
             "salt": "${encode(cipherLoad.salt)}",
@@ -116,7 +99,7 @@ private fun encode(cipherType: CipherType): String =
         CipherType.Main -> "main"
     }
 
-private fun <T : Any> encode(itemType: ItemType<T>): String =
-    when (itemType) {
-        ItemType.Text -> "string"
+private fun <T : Any> encode(plainType: PlainType<T>): String =
+    when (plainType) {
+        PlainType.Text -> "string"
     }

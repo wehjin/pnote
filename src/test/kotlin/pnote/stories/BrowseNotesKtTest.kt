@@ -21,13 +21,15 @@ internal class BrowseNotesKtTest {
 
         override val noteBag: NoteBag = object : NoteBag {
 
-            override fun addNote(password: Password, note: Note): Long {
+            override fun createNote(password: Password, note: Note): Long {
                 note as Note.Basic
                 bannerSet.add(Banner.Basic(note.noteId, note.title))
                 return note.noteId
             }
 
-            override fun removeNote(noteId: Long, password: Password): Unit = error("not implemented")
+            override fun readNote(password: Password, noteId: Long): Note = error("not implemented")
+            override fun updateNote(password: Password, note: Note) = error("not implemented")
+            override fun deleteNote(noteId: Long, password: Password): Unit = error("not implemented")
 
             override fun readBanners(): ReadBannersResult = when (val accessLevel = cryptor.accessLevel) {
                 Empty -> ReadBannersResult(accessLevel, emptySet())

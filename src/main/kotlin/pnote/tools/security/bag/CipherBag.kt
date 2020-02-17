@@ -15,18 +15,18 @@ class CipherBag(dir: File) {
     private val itemsDir = File(dir, "items").apply { mkdirs() }
     private val itemFileFilter = FileFilter { it.isFile }
 
-    fun <T : Any> values(password: CharArray, itemType: ItemType<T>) = map(password, itemType) { plainValue }
+    fun <T : Any> values(password: CharArray, plainType: PlainType<T>) = map(password, plainType) { plainValue }
 
     private fun <T : Any, R : Any> mapOrNull(
         itemId: String,
         password: CharArray,
-        itemType: ItemType<T>,
+        plainType: PlainType<T>,
         block: ItemVisitScope<T>.() -> R
-    ): R? = cipherItem(itemId)?.map(password, itemType, block)
+    ): R? = readCipher(itemId)?.map(password, plainType, block)
 
     fun <T : Any, R : Any> map(
         password: CharArray,
-        itemType: ItemType<T>,
+        plainType: PlainType<T>,
         block: ItemVisitScope<T>.() -> R
     ): Set<R> {
         val itemFiles = itemsDir.listFiles(itemFileFilter)!!
@@ -36,7 +36,7 @@ class CipherBag(dir: File) {
             val jobs = itemFiles.map {
                 GlobalScope.launch(Dispatchers.IO) {
                     val result = try {
-                        CipherItem(it).map(password, itemType, block)
+                        CipherFile(it).map(password, plainType, block)
                     } catch (e: Throwable) {
                         null
                     }
@@ -51,43 +51,60 @@ class CipherBag(dir: File) {
         return values.toSet()
     }
 
-    fun <T : Any> add(password: CharArray, itemType: ItemType<T>, value: T, id: String? = null): String {
-        val cipherItem = cipherItem(itemsDir, password, plainItem(value, itemType, id))
-        return cipherItem.id
+    fun <T : Any> writeCipher(password: CharArray, plainType: PlainType<T>, value: T, id: String? = null): String {
+        val existingCipher = id?.let { readCipher(it) }
+        existingCipher?.let { error("Cipher exists") }
+        return writeCipherFile(password, plainItem(value, plainType, id))
     }
 
-
-    fun <T : Any> replace(id: String, password: CharArray, itemType: ItemType<T>, value: T): String {
-        return add(password, itemType, value).also {
-            cipherItem(id)?.unlink()
+    fun <T : Any> rewriteCipher(id: String, password: CharArray, plainType: PlainType<T>, value: T): String {
+        val alteredPlain = plainItem(value, plainType, id)
+        val existingCipher = readCipher(id)
+        return if (existingCipher == null) {
+            writeCipherFile(password, alteredPlain)
+        } else {
+            // The purpose here is to confirm both that bytes change AND that the password
+            // deciphers the existing cipher. The map function confirms the latter by throwing
+            // an error if the cipher cannot be deciphered.
+            val bytesChanged = existingCipher.map(password, plainType) {
+                !plainBytes.contentEquals(alteredPlain.bytes)
+            }
+            if (bytesChanged) writeCipherFile(password, alteredPlain) else id
         }
     }
 
-    fun <T : Any> getOrNull(id: String, password: CharArray, itemType: ItemType<T>): T? {
-        return cipherItem(itemsDir, id)?.get(password, itemType)
+    fun <T : Any> unwrapOrNull(id: String, password: CharArray, plainType: PlainType<T>): T? {
+        return readCipher(id)?.get(password, plainType)
     }
 
-    fun <T : Any> get(id: String, password: CharArray, itemType: ItemType<T>): T {
-        return getOrNull(id, password, itemType) ?: error("No cipher item for id $id")
+    fun <T : Any> unwrap(id: String, password: CharArray, plainType: PlainType<T>): T {
+        return unwrapOrNull(id, password, plainType) ?: error("No cipher for id $id")
     }
 
-    fun <T : Any> remove(id: String, password: CharArray, itemType: ItemType<T>) {
-        if (checkPassword(id, password, itemType)) {
-            cipherItem(id)?.unlink()
+    fun <T : Any> remove(id: String, password: CharArray, plainType: PlainType<T>) {
+        if (checkPassword(id, password, plainType)) {
+            readCipher(id)?.unlink()
         }
     }
 
-    private fun <T : Any> checkPassword(id: String, password: CharArray, itemType: ItemType<T>): Boolean {
-        return mapOrNull(id, password, itemType) { Unit } != null
+    private fun <T : Any> checkPassword(id: String, password: CharArray, plainType: PlainType<T>): Boolean {
+        return mapOrNull(id, password, plainType) { Unit } != null
     }
 
     @Deprecated("Use version that checks the password")
     fun remove(id: String) {
-        val cipherItem = cipherItem(id)
-        cipherItem?.unlink()
+        readCipher(id)?.unlink()
     }
 
-    private fun cipherItem(id: String): CipherItem? = cipherItem(itemsDir, id)
+    private fun <T : Any> writeCipherFile(password: CharArray, plainItem1: PlainItem<T>): String {
+        return writeCipherFile(itemsDir, password, plainItem1).id
+    }
+
+    private fun readCipher(id: String): CipherFile? {
+        val itemFile = File(itemsDir, id)
+        val fileExists = itemFile.exists() && itemFile.isFile
+        return if (fileExists) CipherFile(itemFile) else null
+    }
 }
 
 fun cipherBag(dir: File): CipherBag = CipherBag(dir)

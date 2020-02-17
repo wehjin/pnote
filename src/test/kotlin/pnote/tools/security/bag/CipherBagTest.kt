@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import pnote.tools.security.item.ItemType
+import pnote.tools.security.item.PlainType
 
 internal class CipherBagTest {
 
@@ -14,38 +14,38 @@ internal class CipherBagTest {
 
     @Test
     internal fun `bag starts empty`() {
-        val values = bag.values(secret, ItemType.Text)
+        val values = bag.values(secret, PlainType.Text)
         assertEquals(0, values.size)
     }
 
     @Test
     internal fun `bag adds and removes items`() {
-        val id = bag.add(secret, ItemType.Text, "dis")
-        assertEquals("dis", bag.get(id, secret, ItemType.Text))
-        bag.remove(id, secret, ItemType.Text)
-        assertNull(bag.getOrNull(id, secret, ItemType.Text))
+        val id = bag.writeCipher(secret, PlainType.Text, "dis")
+        assertEquals("dis", bag.unwrap(id, secret, PlainType.Text))
+        bag.remove(id, secret, PlainType.Text)
+        assertNull(bag.unwrapOrNull(id, secret, PlainType.Text))
     }
 
     @Test
     internal fun `bag does not remove if the password is wrong`() {
-        val id = bag.add(secret, ItemType.Text, "dis")
-        assertEquals("dis", bag.get(id, secret, ItemType.Text))
-        assertThrows<IllegalStateException> { bag.remove(id, "4321".toCharArray(), ItemType.Text) }
+        val id = bag.writeCipher(secret, PlainType.Text, "dis")
+        assertEquals("dis", bag.unwrap(id, secret, PlainType.Text))
+        assertThrows<IllegalStateException> { bag.remove(id, "4321".toCharArray(), PlainType.Text) }
     }
 
     @Test
     internal fun `bag maps items`() {
-        bag.add(secret, ItemType.Text, "dis")
-        bag.add(secret, ItemType.Text, "dat")
-        val values = bag.map(secret, ItemType.Text) { plainValue }
+        bag.writeCipher(secret, PlainType.Text, "dis")
+        bag.writeCipher(secret, PlainType.Text, "dat")
+        val values = bag.map(secret, PlainType.Text) { plainValue }
         assertEquals(setOf("dis", "dat"), values)
     }
 
     @Test
     internal fun `bag replaces items`() {
-        val id = bag.add(secret, ItemType.Text, "dis")
-        val newId = bag.replace(id, secret, ItemType.Text, "dat")
-        assertNull(bag.getOrNull(id, secret, ItemType.Text))
-        assertEquals("dat", bag.get(newId, secret, ItemType.Text))
+        val id = bag.writeCipher(secret, PlainType.Text, "dis")
+        val newId = bag.rewriteCipher(id, secret, PlainType.Text, "dat")
+        assertEquals(id, newId)
+        assertEquals("dat", bag.unwrap(newId, secret, PlainType.Text))
     }
 }

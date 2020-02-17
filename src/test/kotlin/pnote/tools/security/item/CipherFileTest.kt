@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.File
 
-internal class CipherItemTest {
+internal class CipherFileTest {
 
     @Test
     internal fun `cipher item has same id as plain`() {
@@ -14,7 +14,7 @@ internal class CipherItemTest {
         val password = "hey".toCharArray()
         val text = "Hello world!"
         val plainItem = plainItem(text)
-        val cipherItem = cipherItem(dir, password, plainItem)
+        val cipherItem = writeCipherFile(dir, password, plainItem)
         assertEquals(plainItem.id, cipherItem.id)
     }
 
@@ -25,21 +25,21 @@ internal class CipherItemTest {
         val password = "hey".toCharArray()
         val text = "Hello world!"
         val plainItem = plainItem(text)
-        val cipherItem = cipherItem(dir, password, plainItem)
-        val afterText = cipherItem.map(password, ItemType.Text) { plainValue }
+        val cipherItem = writeCipherFile(dir, password, plainItem)
+        val afterText = cipherItem.map(password, PlainType.Text) { plainValue }
         assertEquals(text, afterText)
     }
 
     @Test
     internal fun `visiting a cipher-item with an incorrect password throws an exception`() {
         val dir = createTempDir()
-        val cipherItem = cipherItem(
+        val cipherItem = writeCipherFile(
             dir,
             "good".toCharArray(),
             plainItem("Hello world!")
         )
         assertThrows<IllegalStateException> {
-            cipherItem.map("bad".toCharArray(), ItemType.Text) { plainValue }
+            cipherItem.map("bad".toCharArray(), PlainType.Text) { plainValue }
         }
     }
 }

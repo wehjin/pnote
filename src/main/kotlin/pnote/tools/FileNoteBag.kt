@@ -1,24 +1,39 @@
 package pnote.tools
 
 import pnote.tools.security.bag.CipherBag
-import pnote.tools.security.item.ItemType
+import pnote.tools.security.item.PlainType
 import java.io.File
 
 class FileNoteBag(dir: File, private val cryptor: Cryptor) : NoteBag {
 
-    override fun addNote(password: Password, note: Note): Long {
-        val itemId = bag.add(
+    override fun createNote(password: Password, note: Note): Long {
+        val itemId = bag.writeCipher(
             password = password.chars,
-            itemType = ItemType.Text,
-            value = (note as Note.Basic).title,
+            plainType = PlainType.Text,
+            value = toPlain(note),
             id = itemId(note.noteId)
         )
         return noteId(itemId)
     }
 
-    override fun removeNote(noteId: Long, password: Password) {
-        bag.remove(itemId(noteId), password.chars, ItemType.Text)
+    override fun readNote(password: Password, noteId: Long): Note {
+        val plain = bag.unwrap(itemId(noteId), password.chars, PlainType.Text)
+        return toNote(noteId, plain)
     }
+
+    override fun updateNote(password: Password, note: Note) {
+        bag.rewriteCipher(
+            id = itemId(note.noteId),
+            password = password.chars,
+            plainType = PlainType.Text,
+            value = toPlain((note as Note.Basic))
+        )
+    }
+
+    override fun deleteNote(noteId: Long, password: Password) {
+        bag.remove(itemId(noteId), password.chars, PlainType.Text)
+    }
+
 
     override fun readBanners(): ReadBannersResult =
         when (val accessLevel = cryptor.accessLevel) {
@@ -32,16 +47,24 @@ class FileNoteBag(dir: File, private val cryptor: Cryptor) : NoteBag {
             )
             is AccessLevel.ConfidentialUnlocked -> ReadBannersResult(
                 accessLevel = accessLevel,
-                banners = bag.map(
-                    accessLevel.password.chars,
-                    ItemType.Text
-                ) {
-                    Banner.Basic(noteId = itemId.toLong(16), title = plainValue)
+                banners = bag.map(accessLevel.password.chars, PlainType.Text) {
+                    Banner.Basic(
+                        noteId = noteId(itemId),
+                        title = plainValue
+                    )
                 })
         }
 
     private val bag = CipherBag(dir)
 }
 
-fun itemId(noteId: Long) = noteId.toString(16)
-fun noteId(itemId: String) = itemId.toLong(16)
+private fun toPlain(note: Note): String {
+    return (note as Note.Basic).title
+}
+
+private fun toNote(noteId: Long, plain: String): Note {
+    return Note.Basic(noteId = noteId, title = plain, body = plain)
+}
+
+private fun itemId(noteId: Long) = noteId.toString(16)
+private fun noteId(itemId: String) = itemId.toLong(16)

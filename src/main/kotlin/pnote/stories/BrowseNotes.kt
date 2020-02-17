@@ -27,7 +27,7 @@ fun AppScope.browseNotesStory(): Story<BrowseNotes> = matchingStory(
             init(this)
         }
         on<AddNote, BrowseNotes, Browsing> {
-            noteBag.addNote(vision.password, Note.Basic(action.title))
+            noteBag.createNote(vision.password, Note.Basic(action.title))
             init(this)
         }
         on<ViewNote, BrowseNotes, Browsing> {
