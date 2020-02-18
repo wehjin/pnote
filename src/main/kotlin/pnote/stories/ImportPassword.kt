@@ -9,7 +9,6 @@ import pnote.stories.ImportPasswordVision.FinishedGetPassword
 import pnote.stories.ImportPasswordVision.GetPassword
 import pnote.tools.Password
 
-
 sealed class ImportPasswordVision {
     class GetPassword(
         private val offer: (Any) -> Boolean,

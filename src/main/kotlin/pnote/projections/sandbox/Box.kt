@@ -64,17 +64,15 @@ fun <T, U> Box<T>.packBottom(height: Int, box: Box<U>): Box<Void> = box(
 )
 
 // TODO: Clean up duplication with a multi-box mapEdge
-fun <T, U> Box<T>.before(box: Box<U>): Box<Void> = box(
-    name = "${this.name}\\${box.name}",
+fun <T, U> Box<T>.before(aftBox: Box<U>): Box<Void> = box(
+    name = "${this.name}\\${aftBox.name}",
     render = {
-        val foreBounds = edge.bounds.shiftZ(-1)
-        box.render(this)
-        this@before.render(this.withEdgeBounds(foreBounds))
+        aftBox.render(this.withEdgeBounds(edge.bounds.shiftZ(1)))
+        this@before.render(this.withEdgeBounds(edge.bounds.shiftZ(0)))
     },
     focus = {
-        val foreBounds = edge.bounds.shiftZ(-1)
-        box.focus(this)
-        this@before.focus(this.withEdgeBounds(foreBounds))
+        aftBox.focus(this.withEdgeBounds(edge.bounds.shiftZ(1)))
+        this@before.focus(this.withEdgeBounds(edge.bounds.shiftZ(0)))
     },
     setContent = noContent
 )

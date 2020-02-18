@@ -93,13 +93,18 @@ private fun BoxContext.topBarBox(onBack: () -> Unit, onSave: () -> Unit): Box<Vo
 
 private fun BoxContext.contentBox(vision: EditNote.Editing, onTitleEdit: (List<Char>) -> Unit): Box<Void> {
     val note = vision.note as Note.Basic
-    val titleBox = lineEditBox("Title", note.title, onTitleEdit)
+    val titleBox = lineEditBox("Title", note.title, primaryDarkSwatch, onTitleEdit)
     val titleRow = titleBox.maxHeight(3)
     val contentRow = editBox(note.body).packBottom(4, gapBox())
     return contentRow.packTop(4, titleRow)
 }
 
-fun BoxContext.lineEditBox(label: String, line: StringHandle, onChange: (List<Char>) -> Unit): Box<Void> {
+fun BoxContext.lineEditBox(
+    label: String,
+    line: StringHandle,
+    swatch: ColorSwatch,
+    onChange: (List<Char>) -> Unit
+): Box<Void> {
     val id = randomId()
     var lineEditor: LineEditor? = null
     fun initEditor(width: Int): LineEditor = lineEditor
@@ -111,18 +116,19 @@ fun BoxContext.lineEditBox(label: String, line: StringHandle, onChange: (List<Ch
             val bounds = edge.bounds
             val editBounds = bounds.insetXY(1)
             val editor = initEditor(editBounds.width)
+            val cursorSwatch = secondarySwatch
             if (activeFocusId == id) {
-                focusedEditFrame(label).render(this)
+                focusedEditFrame(label, swatch, cursorSwatch).render(this)
             } else {
-                unfocusedEditFrame(label, editor.charCount > 0).render(this)
+                unfocusedEditFrame(label, editor.charCount > 0, swatch).render(this)
             }
             if (editBounds.contains(col, row)) {
                 val editIndex = col - editBounds.left
                 if (activeFocusId == id && editor.isCursor(editIndex)) {
-                    setColor(secondarySwatch.fillColor, bounds.z)
-                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, secondarySwatch.strokeColor, bounds.z) }
+                    setColor(cursorSwatch.fillColor, bounds.z)
+                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, cursorSwatch.strokeColor, bounds.z) }
                 } else {
-                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, primaryDarkSwatch.strokeColor, bounds.z) }
+                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, swatch.strokeColor, bounds.z) }
                 }
             }
         },
@@ -169,7 +175,7 @@ fun BoxContext.editBox(body: StringHandle): Box<Void> {
             initMemo = body.toCharSequence().toMutableList()
         ).also { lateEditor = it }
 
-    val textColor = primaryDarkSwatch.strokeColor
+    val swatch = backgroundSwatch
     val cursorSwatch = secondarySwatch
     val label = "Body"
     return box(
@@ -179,9 +185,9 @@ fun BoxContext.editBox(body: StringHandle): Box<Void> {
             val editBounds = bounds.insetXY(1)
             val editor = initEditor(editBounds)
             if (activeFocusId == id) {
-                focusedEditFrame(label).render(this)
+                focusedEditFrame(label, swatch, cursorSwatch).render(this)
             } else {
-                unfocusedEditFrame(label, editor.hasChars).render(this)
+                unfocusedEditFrame(label, editor.hasChars, swatch).render(this)
             }
             if (editBounds.contains(col, row)) {
                 val leftInset = col - editBounds.left
@@ -190,7 +196,7 @@ fun BoxContext.editBox(body: StringHandle): Box<Void> {
                     setColor(cursorSwatch.fillColor, bounds.z)
                     editor.getChar(leftInset, topInset)?.let { setGlyph(it, cursorSwatch.strokeColor, bounds.z) }
                 } else {
-                    editor.getChar(leftInset, topInset)?.let { setGlyph(it, textColor, bounds.z) }
+                    editor.getChar(leftInset, topInset)?.let { setGlyph(it, swatch.strokeColor, bounds.z) }
                 }
             }
         },

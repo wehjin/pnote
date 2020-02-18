@@ -170,7 +170,7 @@ fun BoxContext.gapBox() = fillBox(null)
 fun BoxContext.fillBox(color: TextColor?): Box<Void> = box(
     name = "ColorBox",
     render = {
-        if (edge.bounds.contains(col, row) && edge.bounds.z <= colorMinZ && color != null) {
+        if (edge.bounds.contains(col, row) && color != null) {
             setColor(color, edge.bounds.z)
         }
     },
@@ -181,7 +181,7 @@ fun BoxContext.fillBox(color: TextColor?): Box<Void> = box(
 fun BoxContext.glyphBox(glyph: Char, color: TextColor): Box<Void> = box(
     name = "GlyphBox",
     render = {
-        if (edge.bounds.contains(col, row) && edge.bounds.z <= glyphMinZ) {
+        if (edge.bounds.contains(col, row)) {
             setGlyph(glyph, color, edge.bounds.z)
         }
     },
