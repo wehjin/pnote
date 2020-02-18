@@ -37,15 +37,29 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
                 is UnlockIdentity.Unlocking -> {
                     val prefixEdit = lineEditBox("Prefix", StringHandle(""), surfaceSwatch) {}
                     val phraseEdit = lineEditBox("Phrase", StringHandle(""), surfaceSwatch) {}
-                    val contentBox = gapBox().packTop(3, phraseEdit).packTop(1, gapBox()).packTop(3, prefixEdit)
-                    val dialogBox = dialogBox("Sol Name", contentBox)
-                    val backgroundBox = fillBox(backgroundSwatch.fillColor)
-                    dialogBox.before(backgroundBox)
+                    val contentBox = columnBox(
+                        3 to prefixEdit,
+                        1 to gapBox(),
+                        3 to phraseEdit,
+                        1 to gapBox(),
+                        1 to gapBox().packRight(10, buttonBox("Continue").maxHeight(1, Snap.RIGHT))
+                    )
+                    dialogBox("Sol Name", contentBox).before(fillBox(backgroundSwatch.fillColor))
                 }
             }
             boxScreen.setBox(box)
         }
     }
+}
+
+private fun BoxContext.columnBox(vararg rows: Pair<Int, Box<Void>>): Box<Void> {
+    return rows.reversed().fold(
+        initial = gapBox(),
+        operation = { sum, next ->
+            val (height, box) = next
+            sum.packTop(height, box)
+        }
+    )
 }
 
 private fun BoxContext.dialogBox(title: String, contentBox: Box<*>): Box<Void> {
