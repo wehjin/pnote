@@ -4,8 +4,8 @@ import com.googlecode.lanterna.TextColor
 import java.awt.Color
 
 data class ColorSwatch(val strokeColor: TextColor, val fillColor: TextColor) {
-    val highColor: TextColor by lazy { blend(.87f) }
-    val mediumColor: TextColor by lazy { blend(.6f) }
+    val highColor: TextColor by lazy { blend(.77f) }
+    val mediumColor: TextColor by lazy { blend(.60f) }
     val disabledColor: TextColor by lazy { blend(.38f) }
 }
 

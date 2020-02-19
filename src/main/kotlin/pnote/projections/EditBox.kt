@@ -6,8 +6,8 @@ private const val labelInset = 1
 
 fun BoxContext.unfocusedEditFrame(label: String, labelAtTop: Boolean, swatch: ColorSwatch): Box<Void> {
     val fillBox = fillBox(swatch.disabledColor)
-    val labelBox = labelBox(label, swatch.disabledColor, Snap.LEFT)
-    val scoreBox = glyphBox('_', swatch.mediumColor)
+    val labelBox = labelBox(label, swatch.mediumColor, Snap.LEFT)
+    val scoreBox = glyphBox('_', swatch.highColor)
     return box(
         name = "LineBox",
         render = {

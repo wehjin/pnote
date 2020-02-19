@@ -9,6 +9,7 @@ import pnote.projections.sandbox.*
 import pnote.scopes.AppScope
 import pnote.stories.Story2
 import pnote.stories.UnlockIdentity
+import pnote.stories.cancel
 import pnote.stories.unlockIdentityStory
 import pnote.tools.Cryptor
 import pnote.tools.NoteBag
@@ -35,16 +36,20 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
             val box = when (vision) {
                 is UnlockIdentity.Done -> messageBox(vision.name, backgroundSwatch)
                 is UnlockIdentity.Unlocking -> {
-                    val prefixEdit = lineEditBox("Prefix", StringHandle(""), surfaceSwatch) {}
-                    val phraseEdit = lineEditBox("Phrase", StringHandle(""), surfaceSwatch) {}
-                    val contentBox = columnBox(
-                        3 to prefixEdit,
-                        1 to gapBox(),
-                        3 to phraseEdit,
-                        1 to gapBox(),
-                        1 to gapBox().packRight(10, buttonBox("Continue").maxHeight(1, Snap.RIGHT))
-                    )
-                    dialogBox("Sol Name", contentBox).before(fillBox(backgroundSwatch.fillColor))
+                    dialogBox(
+                        "Select Identity",
+                        columnBox(
+                            3 to lineEditBox("Prefix", StringHandle(""), surfaceSwatch) {},
+                            1 to gapBox(),
+                            3 to lineEditBox("Secret", StringHandle(""), surfaceSwatch) {},
+                            1 to gapBox(),
+                            1 to dialogActionsBox(listOf("Cancel", "Ok")) {
+                                when (it) {
+                                    0 -> vision.cancel()
+                                }
+                            }
+                        )
+                    ).before(fillBox(backgroundSwatch.fillColor))
                 }
             }
             boxScreen.setBox(box)
@@ -52,13 +57,20 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
     }
 }
 
+private fun BoxContext.dialogActionsBox(labels: List<String>, onPress: (Int) -> Unit): Box<Void> {
+    return labels.foldIndexed(
+        initial = gapBox(),
+        operation = { i, sum, label ->
+            val box = textButtonBox(label) { onPress(i) }
+            sum.packRight(1, gapBox()).packRight(label.length + 2, box)
+        }
+    )
+}
+
 private fun BoxContext.columnBox(vararg rows: Pair<Int, Box<Void>>): Box<Void> {
     return rows.reversed().fold(
         initial = gapBox(),
-        operation = { sum, next ->
-            val (height, box) = next
-            sum.packTop(height, box)
-        }
+        operation = { sum, (height, box) -> sum.packTop(height, box) }
     )
 }
 
