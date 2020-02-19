@@ -44,11 +44,30 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
                     }
 
                     dialogBox(
-                        "Enter Identity",
+                        "Unlock Identity",
                         columnBox(
-                            3 to lineEditBox("Prefix", prefix, surfaceSwatch) { update(it, null) },
+                            4 to lineEditBox(
+                                label = "Prefix*",
+                                line = prefix,
+                                swatch = surfaceSwatch,
+                                toExtra = {
+                                    val chars = prefix.toCharSequence().trim()
+                                    if (chars.isEmpty() || isValidSolNamePrefix(chars)) {
+                                        ExtraLabel.Info("Ex: ada-lovelace")
+                                    } else {
+                                        ExtraLabel.Error("Must be letters and dashes")
+                                    }
+                                },
+                                onChange = { update(it, null) }
+                            ),
                             1 to gapBox(),
-                            3 to lineEditBox("Secret", phrase, surfaceSwatch) { update(null, it) },
+                            4 to lineEditBox(
+                                label = "Secret",
+                                line = phrase,
+                                swatch = surfaceSwatch,
+                                toExtra = { ExtraLabel.Info("Ex: password1234") },
+                                onChange = { update(null, it) }
+                            ),
                             1 to gapBox(),
                             1 to dialogActionsBox(
                                 actions = listOf(
@@ -58,6 +77,11 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
                                 onPress = {
                                     when (it) {
                                         0 -> vision.cancel()
+                                        1 -> {
+                                            val name = prefix.toCharSequence().trim().toString()
+                                            val secretChars = phrase.toCharSequence().toString().toCharArray()
+                                            vision.setSolName(name, secretChars)
+                                        }
                                     }
                                 })
                         )

@@ -36,6 +36,11 @@ class LanternaProjector : BoxContext {
             TextColor.ANSI.BLACK,
             TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33)
         )
+    override val errorSwatch: ColorSwatch =
+        ColorSwatch(
+            TextColor.ANSI.BLACK,
+            TextColor.ANSI.RED
+        )
 
     fun start() = boxScreen.apply {
         val passwordInput = inputBox()

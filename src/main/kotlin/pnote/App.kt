@@ -53,6 +53,8 @@ fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {
             ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72))
         override val secondarySwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
+        override val errorSwatch: ColorSwatch =
+            ColorSwatch(TextColor.ANSI.BLACK, TextColor.ANSI.RED)
     }
     return context.also { block?.invoke(it) }
 }

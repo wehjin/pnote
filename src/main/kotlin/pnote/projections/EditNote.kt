@@ -93,16 +93,24 @@ private fun BoxContext.topBarBox(onBack: () -> Unit, onSave: () -> Unit): Box<Vo
 
 private fun BoxContext.contentBox(vision: EditNote.Editing, onTitleEdit: (List<Char>) -> Unit): Box<Void> {
     val note = vision.note as Note.Basic
-    val titleBox = lineEditBox("Title", note.title, primaryDarkSwatch, onTitleEdit)
+    val titleBox = lineEditBox("Title", note.title, primaryDarkSwatch, { null }, onTitleEdit)
     val titleRow = titleBox.maxHeight(3)
     val contentRow = editBox(note.body).packBottom(4, gapBox())
     return contentRow.packTop(4, titleRow)
+}
+
+sealed class ExtraLabel {
+    abstract val label: String
+
+    data class Info(override val label: String) : ExtraLabel()
+    data class Error(override val label: String) : ExtraLabel()
 }
 
 fun BoxContext.lineEditBox(
     label: String,
     line: StringHandle,
     swatch: ColorSwatch,
+    toExtra: () -> ExtraLabel? = { null },
     onChange: (List<Char>) -> Unit
 ): Box<Void> {
     val id = randomId()
@@ -113,23 +121,43 @@ fun BoxContext.lineEditBox(
     return box(
         name = "LineBox",
         render = {
-            val bounds = edge.bounds
-            val editBounds = bounds.insetXY(1)
+            val boxBounds = edge.bounds
+            val extra = toExtra()
+            val frameBounds = extra?.let { boxBounds.insetBottom(1) } ?: boxBounds
+            val editBounds = frameBounds.insetXY(1)
             val editor = initEditor(editBounds.width)
-            val cursorSwatch = secondarySwatch
+            val cursorSwatch = (extra as? ExtraLabel.Error)?.let { errorSwatch } ?: secondarySwatch
             if (activeFocusId == id) {
-                focusedEditFrame(label, swatch, cursorSwatch).render(this)
+                focusedEditFrame(
+                    label = label,
+                    swatch = swatch,
+                    focusSwatch = cursorSwatch
+                ).render(this.withEdgeBounds(frameBounds))
             } else {
-                unfocusedEditFrame(label, editor.charCount > 0, swatch).render(this)
+                unfocusedEditFrame(
+                    label = label,
+                    labelAtTop = editor.charCount > 0,
+                    swatch = swatch,
+                    glyphSwatch = (extra as? ExtraLabel.Error)?.let { errorSwatch } ?: swatch
+                ).render(this.withEdgeBounds(frameBounds))
             }
             if (editBounds.contains(col, row)) {
                 val editIndex = col - editBounds.left
                 if (activeFocusId == id && editor.isCursor(editIndex)) {
-                    setColor(cursorSwatch.fillColor, bounds.z)
-                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, cursorSwatch.strokeColor, bounds.z) }
+                    setColor(cursorSwatch.fillColor, frameBounds.z)
+                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, cursorSwatch.strokeColor, frameBounds.z) }
                 } else {
-                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, swatch.strokeColor, bounds.z) }
+                    editor.getDisplayChar(editIndex)?.let { setGlyph(it, swatch.strokeColor, frameBounds.z) }
                 }
+            }
+            if (extra != null) {
+                val bounds = boxBounds.confineToBottom()
+                val color = when (extra) {
+                    is ExtraLabel.Info -> swatch.disabledColor
+                    is ExtraLabel.Error -> if (activeFocusId == id) errorSwatch.fillColor else errorSwatch.mediumColor
+                }
+                val labelBox = labelBox(extra.label, color, Snap.LEFT).padX(1)
+                labelBox.render(this.withEdgeBounds(bounds))
             }
         },
         focus = {

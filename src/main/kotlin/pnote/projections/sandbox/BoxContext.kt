@@ -15,6 +15,7 @@ interface BoxContext {
     val primaryLightSwatch: ColorSwatch
     val primaryDarkSwatch: ColorSwatch
     val secondarySwatch: ColorSwatch
+    val errorSwatch: ColorSwatch
 }
 
 @Suppress("unused")

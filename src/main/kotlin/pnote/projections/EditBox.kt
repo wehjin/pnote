@@ -4,10 +4,17 @@ import pnote.projections.sandbox.*
 
 private const val labelInset = 1
 
-fun BoxContext.unfocusedEditFrame(label: String, labelAtTop: Boolean, swatch: ColorSwatch): Box<Void> {
-    val fillBox = fillBox(swatch.disabledColor)
-    val labelBox = labelBox(label, swatch.mediumColor, Snap.LEFT)
-    val scoreBox = glyphBox('_', swatch.highColor)
+fun BoxContext.unfocusedEditFrame(
+    label: String,
+    labelAtTop: Boolean,
+    swatch: ColorSwatch,
+    glyphSwatch: ColorSwatch = swatch
+): Box<Void> {
+    val glyphColor = glyphSwatch.mediumColor
+    val fillColor = swatch.disabledColor
+    val fillBox = fillBox(fillColor)
+    val labelBox = labelBox(label, glyphColor, Snap.LEFT)
+    val scoreBox = glyphBox('_', glyphColor)
     return box(
         name = "LineBox",
         render = {
@@ -26,9 +33,11 @@ fun BoxContext.unfocusedEditFrame(label: String, labelAtTop: Boolean, swatch: Co
 }
 
 fun BoxContext.focusedEditFrame(label: String, swatch: ColorSwatch, focusSwatch: ColorSwatch): Box<Void> {
-    val fillBox = fillBox(swatch.disabledColor)
-    val focusScoreBox = glyphBox('_', focusSwatch.fillColor)
-    val focusLabelBox = labelBox(label, focusSwatch.fillColor, Snap.LEFT)
+    val glyphColor = focusSwatch.fillColor
+    val fillColor = swatch.disabledColor
+    val fillBox = fillBox(fillColor)
+    val focusLabelBox = labelBox(label, glyphColor, Snap.LEFT)
+    val focusScoreBox = glyphBox('_', glyphColor)
     return box(
         name = "LineBox",
         render = {
