@@ -19,7 +19,7 @@ fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>) {
             println("${story.name}: $vision")
             when (vision) {
                 BrowseNotes.Finished -> break@visionLoop
-                is BrowseNotes.Unlocking -> projectUnlockConfidential(vision.substory)
+                is BrowseNotes.Unlocking -> projectUnlockIdentity(vision.substory)
                 is BrowseNotes.Browsing -> projectBrowsing(story, vision, boxScreen).also { clearSubProjection() }
                 is BrowseNotes.Importing -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
                 is BrowseNotes.AwaitingDetails ->

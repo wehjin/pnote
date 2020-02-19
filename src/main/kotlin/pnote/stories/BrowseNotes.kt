@@ -51,10 +51,10 @@ private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNo
                 Importing(substory)
             }
             ConfidentialLocked -> {
-                val substory = unlockConfidential().also {
+                val substory = unlockIdentityStory().also {
                     storyInitScope.offerWhenStoryEnds(it) {
-                        val unlockWasCancelled = (ending as UnlockConfidential.Finished).wasCancelled
-                        if (unlockWasCancelled) Cancel else Reload
+                        val wasCancelled = (ending as UnlockIdentity.Done).wasCancelled
+                        if (wasCancelled) Cancel else Reload
                     }
                 }
                 Unlocking(substory)
@@ -65,7 +65,7 @@ private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNo
 
 sealed class BrowseNotes() {
     class Importing(val substory: Story<ImportPasswordVision>) : BrowseNotes()
-    data class Unlocking(val substory: Story<UnlockConfidential>) : BrowseNotes()
+    data class Unlocking(val substory: Story2<UnlockIdentity>) : BrowseNotes()
     data class AwaitingDetails(val substory: Story<NoteDetails>) : BrowseNotes()
     object Finished : BrowseNotes()
     class Browsing(val password: Password, val banners: Set<Banner>) : BrowseNotes() {
