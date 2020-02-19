@@ -92,3 +92,7 @@ class SolName(val name: String, private val secret: CharArray) {
 }
 
 private val nameTest = Regex("[a-zA-Z]+([-][a-zA-Z]+)*")
+
+fun isValidSolNamePrefix(chars: CharSequence): Boolean {
+    return nameTest.matchEntire(chars) != null
+}

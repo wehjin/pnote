@@ -7,10 +7,7 @@ import kotlinx.coroutines.runBlocking
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
 import pnote.scopes.AppScope
-import pnote.stories.Story2
-import pnote.stories.UnlockIdentity
-import pnote.stories.cancel
-import pnote.stories.unlockIdentityStory
+import pnote.stories.*
 import pnote.tools.Cryptor
 import pnote.tools.NoteBag
 import pnote.tools.memCryptor
@@ -36,18 +33,33 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
             val box = when (vision) {
                 is UnlockIdentity.Done -> messageBox(vision.name, backgroundSwatch)
                 is UnlockIdentity.Unlocking -> {
+                    // TODO Switch prefix to simple String
+                    val prefix = StringHandle("")
+                    val phrase = StringHandle("")
+
+                    fun update(prefixChars: List<Char>?, phraseChars: List<Char>?) {
+                        prefixChars?.let { prefix.set(it) }
+                        phraseChars?.let { phrase.set(it) }
+                        boxScreen.refreshScreen()
+                    }
+
                     dialogBox(
-                        "Select Identity",
+                        "Enter Identity",
                         columnBox(
-                            3 to lineEditBox("Prefix", StringHandle(""), surfaceSwatch) {},
+                            3 to lineEditBox("Prefix", prefix, surfaceSwatch) { update(it, null) },
                             1 to gapBox(),
-                            3 to lineEditBox("Secret", StringHandle(""), surfaceSwatch) {},
+                            3 to lineEditBox("Secret", phrase, surfaceSwatch) { update(null, it) },
                             1 to gapBox(),
-                            1 to dialogActionsBox(listOf("Cancel", "Ok")) {
-                                when (it) {
-                                    0 -> vision.cancel()
-                                }
-                            }
+                            1 to dialogActionsBox(
+                                actions = listOf(
+                                    DialogAction("Cancel"),
+                                    DialogAction("Unlock") { isValidSolNamePrefix(prefix.toCharSequence().trim()) }
+                                ),
+                                onPress = {
+                                    when (it) {
+                                        0 -> vision.cancel()
+                                    }
+                                })
                         )
                     ).before(fillBox(backgroundSwatch.fillColor))
                 }
@@ -57,11 +69,20 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
     }
 }
 
-private fun BoxContext.dialogActionsBox(labels: List<String>, onPress: (Int) -> Unit): Box<Void> {
-    return labels.foldIndexed(
+data class DialogAction(
+    val label: String,
+    val isEnabled: () -> Boolean = { true }
+)
+
+private fun BoxContext.dialogActionsBox(actions: List<DialogAction>, onPress: (Int) -> Unit): Box<Void> {
+    return actions.foldIndexed(
         initial = gapBox(),
-        operation = { i, sum, label ->
-            val box = textButtonBox(label) { onPress(i) }
+        operation = { i, sum, (label, isEnabled) ->
+            val box = textButtonBox(
+                label = label,
+                isEnabled = { isEnabled() },
+                onPress = { onPress(i) }
+            )
             sum.packRight(1, gapBox()).packRight(label.length + 2, box)
         }
     )

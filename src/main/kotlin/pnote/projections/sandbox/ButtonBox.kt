@@ -19,24 +19,37 @@ inline fun <reified T> Set<ButtonBoxOption>.get(): T? {
     return this.firstOrNull { optionClass.isInstance(it) }?.let { optionClass.cast(it) }
 }
 
-fun BoxContext.textButtonBox(label: String, onPress: (() -> Unit)? = null): Box<Void> {
+fun BoxContext.textButtonBox(
+    label: String,
+    isEnabled: () -> Boolean = { true },
+    onPress: (() -> Unit)? = null
+): Box<Void> {
     val id = randomId()
     val swatch = secondarySwatch
-    val enabledColor = swatch.fillColor
-    val focusColor = swatch.highColor
-    val pressColor = swatch.disabledColor
+    val enabledGlyphColor = swatch.fillColor
+    val disabledGlyphColor = swatch.highColor
+    val focusFillColor = swatch.highColor
+    val pressFillColor = swatch.disabledColor
     var pressed = false
     val sparkReader: SparkReader? = null
     return box(
         name = "TextButtonBox",
         render = {
             val fillColor = when {
-                pressed -> pressColor
-                activeFocusId == id -> focusColor
+                pressed -> pressFillColor
+                activeFocusId == id -> focusFillColor
                 else -> null
             }
-            val fillBox = fillColor?.let { fillBox(fillColor) } ?: gapBox()
-            val glyphBox = labelBox(label.trim().toUpperCase(), enabledColor)
+
+            val fillBox = fillColor?.let {
+                fillBox(fillColor)
+            } ?: gapBox()
+
+            val glyphBox = labelBox(
+                text = label.trim().toUpperCase(),
+                textColor = if (isEnabled()) enabledGlyphColor else disabledGlyphColor
+            )
+
             val box = glyphBox.before(fillBox)
             box.render(this)
         },
@@ -44,21 +57,23 @@ fun BoxContext.textButtonBox(label: String, onPress: (() -> Unit)? = null): Box<
             sparkReader?.also {
                 readSpark(sparkReader.spark, sparkReader.block)
             }
-            onPress?.also { onPress ->
-                setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
-                    if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
-                        GlobalScope.launch {
-                            pressed = true
-                            setChanged(edge.bounds)
-                            delay(200)
-                            pressed = false
-                            setChanged(edge.bounds)
-                            delay(100)
-                            onPress()
-                        }
-                        true
-                    } else false
-                }))
+            if (isEnabled()) {
+                onPress?.also { onPress ->
+                    setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+                        if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
+                            GlobalScope.launch {
+                                pressed = true
+                                setChanged(edge.bounds)
+                                delay(200)
+                                pressed = false
+                                setChanged(edge.bounds)
+                                delay(100)
+                                onPress()
+                            }
+                            true
+                        } else false
+                    }))
+                }
             }
         },
         setContent = noContent
