@@ -43,6 +43,7 @@ data class BoxBounds(
     fun insetXY(size: Int): BoxBounds = insetX(size).insetY(size)
     fun insetXY(cols: Int, rows: Int): BoxBounds = insetX(cols).insetY(rows)
     fun insetBottom(rows: Int): BoxBounds = copy(bottom = bottom - rows)
+    fun insetTop(rows: Int): BoxBounds = copy(top = top + rows)
 
     fun partitionTop(height: Int): Pair<BoxBounds, BoxBounds> {
         val middle = top + height

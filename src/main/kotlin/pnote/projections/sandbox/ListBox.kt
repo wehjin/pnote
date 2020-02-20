@@ -1,20 +1,45 @@
 package pnote.projections.sandbox
 
+import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.input.KeyType
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-enum class ListMovement { Up, Down }
+enum class ListMotion { Up, Down, Activate }
 
-fun BoxContext.listBox(items: List<String>, onItemClicked: (Int) -> Unit): Box<ListMovement> {
-    var selectedItem = 0
-    val list = passiveList(items) { selectedItem = it }
+data class ListSwatch(
+    val fillColor: TextColor,
+    val strokeColor: TextColor,
+    val dividerColor: TextColor,
+    val focusedFillColor: TextColor,
+    val pressedFillColor: TextColor,
+    val activeFillColor: TextColor,
+    val activeStrokeColor: TextColor
+) {
+    constructor(colorSwatch: ColorSwatch, activeColorSwatch: ColorSwatch) : this(
+        fillColor = colorSwatch.fillColor,
+        strokeColor = colorSwatch.strokeColor,
+        dividerColor = colorSwatch.disabledColor,
+        focusedFillColor = colorSwatch.mediumColor,
+        pressedFillColor = colorSwatch.highColor,
+        activeFillColor = activeColorSwatch.highColor,
+        activeStrokeColor = activeColorSwatch.fillColor
+    )
+}
+
+fun BoxContext.listBox(
+    items: List<String>,
+    swatch: ListSwatch = ListSwatch(surfaceSwatch, primarySwatch),
+    onItemClicked: (Int, Box<ListMotion>) -> Unit
+): Box<ListMotion> {
     val focusId = randomId()
+    var focusIndex = 0
+    val list = passiveList(items, null, swatch) { focusIndex = it }
     return list.focusable(focusId) {
         val listChanged = when (keyStroke.keyType) {
-            KeyType.ArrowDown -> true.also { list.setContent(ListMovement.Down) }
-            KeyType.ArrowUp -> true.also { list.setContent(ListMovement.Up) }
-            KeyType.Enter -> false.also { GlobalScope.launch { onItemClicked(selectedItem) } }
+            KeyType.ArrowDown -> true.also { list.update(ListMotion.Down) }
+            KeyType.ArrowUp -> true.also { list.update(ListMotion.Up) }
+            KeyType.Enter -> false.also { GlobalScope.launch { onItemClicked(focusIndex, list) } }
             else -> false
         }
         if (listChanged) setChanged(edge.bounds)
@@ -22,52 +47,86 @@ fun BoxContext.listBox(items: List<String>, onItemClicked: (Int) -> Unit): Box<L
     }
 }
 
-private fun BoxContext.passiveList(items: List<String>, onSelected: (Int) -> Unit): Box<ListMovement> {
-    val normalSwatch = primarySwatch
-    val dividerColor = primaryDarkSwatch.fillColor
-    val maxLevels = 8
-    val borderLevels = 3
-    var topIndex = -borderLevels
-    var selected = 0.also { onSelected(it) }
+private fun BoxContext.passiveList(
+    items: List<String>,
+    initActiveIndex: Int?,
+    swatch: ListSwatch,
+    onPress: (Int) -> Unit
+): Box<ListMotion> {
+    var maxLevels = 0
+    var topIndex = 0
+    var focusIndex = 0.also { onPress(it) }
+    var activeIndex = initActiveIndex
+
+    // TODO Indicate direction of active item when it is out of view.
+
+    fun activate() {
+        activeIndex = focusIndex
+        boxScreen.refreshScreen()
+    }
 
     fun moveDown(): Boolean =
-        if (selected < items.lastIndex) {
-            selected++
-            val bottomBorder = topIndex + maxLevels - 1
-            if (selected == bottomBorder) topIndex++
+        if (focusIndex < items.lastIndex) {
+            focusIndex++
+            if (focusIndex == topIndex + maxLevels) topIndex++
+            boxScreen.refreshScreen()
             true
         } else false
 
     fun moveUp(): Boolean =
-        if (selected > 0) {
-            selected--
-            val topBorder = topIndex + borderLevels - 1
-            if (selected == topBorder) topIndex--
+        if (focusIndex > 0) {
+            focusIndex--
+            if (focusIndex == topIndex - 1) topIndex--
+            boxScreen.refreshScreen()
             true
         } else false
 
     fun itemBox(i: Int): Box<Void> {
         val item = items[i]
-        val swatch = if (i == selected) secondarySwatch else normalSwatch
-        val titleBox = labelBox(item, swatch.strokeColor)
-        val dividerBox = if (i == selected) gapBox() else glyphBox('_', dividerColor)
-        val overlay = columnBox(
-            1, Snap.CENTER,
-            gapBox(),
-            titleBox,
-            dividerBox
+
+        val title = labelBox(
+            text = item,
+            textColor = if (i == activeIndex) swatch.activeStrokeColor else swatch.strokeColor,
+            snap = Snap.LEFT
         )
-        val underlay = fillBox(swatch.fillColor)
+
+        val divider = if (i == focusIndex || i == activeIndex) {
+            gapBox()
+        } else {
+            glyphBox('_', swatch.dividerColor)
+        }
+
+        val overlay = columnBox(
+            1 to gapBox(),
+            1 to title.padX(2),
+            1 to divider
+        )
+
+        val underlay = fillBox(
+            when {
+                i == activeIndex && i == focusIndex -> {
+                    val combinedSwatch = ColorSwatch(
+                        swatch.focusedFillColor,
+                        swatch.activeFillColor
+                    )
+                    combinedSwatch.mediumColor
+                }
+                i == activeIndex -> swatch.activeFillColor
+                i == focusIndex -> swatch.focusedFillColor
+                else -> swatch.fillColor
+            }
+        )
         return overlay.before(underlay).maxHeight(3, Snap.CENTER)
     }
 
     return box(
         name = "ListBox",
         render = {
-            when (items.size) {
-                0 -> messageBox("Empty", normalSwatch)
+            maxLevels = edge.bounds.height / 3
+            val listBox = when (items.size) {
+                0 -> messageBox("Empty", ColorSwatch(swatch.strokeColor, swatch.fillColor))
                 else -> {
-                    val levelBoxes = (-1 until (maxLevels + 1)).map { level ->
+                    val levelBoxes = (0 until (maxLevels + 1)).map { level ->
                         val i = topIndex + level
                         when {
                             i < 0 -> gapBox()
@@ -75,19 +134,22 @@ private fun BoxContext.passiveList(items: List<String>, onSelected: (Int) -> Uni
                             else -> gapBox()
                         }
                     }
-                    val levelHeight = edge.bounds.height / maxLevels
-                    columnBox(levelHeight, Snap.CENTER, *levelBoxes.toTypedArray())
+                    val levelHeight = 3
+                    val levels = levelBoxes.map { levelHeight to it }
+                    columnBox(*levels.toTypedArray())
                 }
-            }.render(this)
+            }
+            listBox.render(this)
         },
         focus = noFocus,
         setContent = {
-            val oldSelected = selected
+            val oldFocusIndex = focusIndex
             when (it) {
-                ListMovement.Up -> moveUp()
-                ListMovement.Down -> moveDown()
+                ListMotion.Up -> moveUp()
+                ListMotion.Down -> moveDown()
+                ListMotion.Activate -> activate()
             }
-            if (selected != oldSelected) GlobalScope.launch { onSelected(selected) }
+            if (focusIndex != oldFocusIndex) GlobalScope.launch { onPress(focusIndex) }
         }
     )
 }

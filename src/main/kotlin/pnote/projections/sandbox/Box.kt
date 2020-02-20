@@ -67,12 +67,12 @@ fun <T, U> Box<T>.packBottom(height: Int, box: Box<U>): Box<Void> = box(
 fun <T, U> Box<T>.before(aftBox: Box<U>): Box<Void> = box(
     name = "${this.name}\\${aftBox.name}",
     render = {
-        aftBox.render(this.withEdgeBounds(edge.bounds.shiftZ(1)))
-        this@before.render(this.withEdgeBounds(edge.bounds.shiftZ(0)))
+        aftBox.render(this.withEdgeBounds(edge.bounds.shiftZ(0)))
+        this@before.render(this.withEdgeBounds(edge.bounds.shiftZ(-1)))
     },
     focus = {
-        aftBox.focus(this.withEdgeBounds(edge.bounds.shiftZ(1)))
-        this@before.focus(this.withEdgeBounds(edge.bounds.shiftZ(0)))
+        aftBox.focus(this.withEdgeBounds(edge.bounds.shiftZ(0)))
+        this@before.focus(this.withEdgeBounds(edge.bounds.shiftZ(-1)))
     },
     setContent = noContent
 )
@@ -100,7 +100,7 @@ fun <T> Box<T>.mapEdge(map: (edgeBounds: BoxBounds) -> BoxBounds): Box<T> = box(
         val bounds = map(edge.bounds)
         this@mapEdge.focus(this.withEdgeBounds(bounds))
     },
-    setContent = this::setContent
+    setContent = this::update
 )
 
 fun <T> Box<T>.focusable(id: Long, onKey: FocusKeyScope.() -> Boolean): Box<T> = box(
@@ -117,12 +117,12 @@ fun <T> Box<T>.focusable(id: Long, onKey: FocusKeyScope.() -> Boolean): Box<T> =
             scope.onKey()
         }))
     },
-    setContent = this::setContent
+    setContent = this::update
 )
 
 interface Box<in T> : BoxContext {
     val name: String
     fun render(spotScope: SpotScope)
     fun focus(focusScope: FocusScope)
-    fun setContent(content: T)
+    fun update(motion: T)
 }

@@ -112,13 +112,6 @@ private fun BoxContext.dialogActionsBox(actions: List<DialogAction>, onPress: (I
     )
 }
 
-private fun BoxContext.columnBox(vararg rows: Pair<Int, Box<Void>>): Box<Void> {
-    return rows.reversed().fold(
-        initial = gapBox(),
-        operation = { sum, (height, box) -> sum.packTop(height, box) }
-    )
-}
-
 private fun BoxContext.dialogBox(title: String, contentBox: Box<*>): Box<Void> {
     val titleRow = dialogTitleBox(title)
     val dialogBehind = fillBox(surfaceSwatch.fillColor)

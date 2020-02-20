@@ -18,14 +18,15 @@ interface BoxContext {
     val errorSwatch: ColorSwatch
 }
 
-@Suppress("unused")
-fun BoxContext.columnBox(levelHeight: Int, snap: Snap, vararg boxes: Box<*>): Box<*> {
-    val reversed = boxes.toList()
-    val stack = reversed.drop(1).fold(
-        initial = reversed.first(),
-        operation = { stack, box -> stack.packBottom(levelHeight, box) }
+fun BoxContext.columnBox(vararg rows: Pair<Int, Box<*>>): Box<*> {
+    val (head, tail) =
+        rows.firstOrNull { it.first < 0 }?.let { heightBox ->
+            Pair(heightBox.second, rows.filter { it.first >= 0 })
+        } ?: Pair(gapBox(), rows.drop(0))
+    return tail.reversed().fold(
+        initial = head,
+        operation = { sum, (height, box) -> sum.packTop(height, box) }
     )
-    return stack.maxHeight(levelHeight * boxes.size, snap)
 }
 
 fun BoxContext.messageBox(message: String, swatch: ColorSwatch, snap: Snap = Snap.CENTER): Box<String> {
@@ -35,7 +36,7 @@ fun BoxContext.messageBox(message: String, swatch: ColorSwatch, snap: Snap = Sna
         name = "MessageBox",
         render = labelAndFill::render,
         focus = noFocus,
-        setContent = label::setContent
+        setContent = label::update
     )
 }
 
@@ -139,7 +140,7 @@ fun <T> BoxContext.box(
     override val name: String = name
     override fun focus(focusScope: FocusScope) = focusScope.focus()
     override fun render(spotScope: SpotScope) = spotScope.render()
-    override fun setContent(content: T) = setContent(content)
+    override fun update(motion: T) = setContent(motion)
 }
 
 val noFocus = { _: FocusScope -> Unit }
