@@ -31,7 +31,8 @@ class ScreenSpot(
     override fun setGlyph(glyph: Char, glyphColor: TextColor, glyphZ: Int) {
         if (glyphZ <= glyphMinZ) {
             val color = getOldColor()
-            screen.setCharacter(col, row,
+            screen.setCharacter(
+                col, row,
                 TextCharacter(glyph, glyphColor, color)
             )
             glyphMinZ = glyphZ
@@ -41,7 +42,8 @@ class ScreenSpot(
     override fun setColor(color: TextColor, colorZ: Int) {
         if (colorZ <= colorMinZ) {
             val (glyph, glyphColor) = getOldGlyph()
-            screen.setCharacter(col, row,
+            screen.setCharacter(
+                col, row,
                 TextCharacter(glyph, glyphColor, color)
             )
             colorMinZ = colorZ

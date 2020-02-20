@@ -48,7 +48,7 @@ fun BoxContext.listBox(
 }
 
 private fun BoxContext.passiveList(
-    items: List<String>,
+    itemLabels: List<String>,
     initActiveIndex: Int?,
     swatch: ListSwatch,
     onPress: (Int) -> Unit
@@ -66,7 +66,7 @@ private fun BoxContext.passiveList(
     }
 
     fun moveDown(): Boolean =
-        if (focusIndex < items.lastIndex) {
+        if (focusIndex < itemLabels.lastIndex) {
             focusIndex++
             if (focusIndex == topIndex + maxLevels) topIndex++
             boxScreen.refreshScreen()
@@ -81,11 +81,16 @@ private fun BoxContext.passiveList(
             true
         } else false
 
-    fun itemBox(i: Int): Box<Void> {
-        val item = items[i]
+    fun fitToWidth(label: String, width: Int) =
+        if (label.length <= width) label else (label.substring(0 until width) + '\\')
+
+    val titlePadCols = 2
+
+    fun itemBox(i: Int, width: Int): Box<Void> {
+        val itemLabel = itemLabels[i]
 
         val title = labelBox(
-            text = item,
+            text = fitToWidth(itemLabel, width - 2 * titlePadCols),
             textColor = if (i == activeIndex) swatch.activeStrokeColor else swatch.strokeColor,
             snap = Snap.LEFT
         )
@@ -98,7 +103,7 @@ private fun BoxContext.passiveList(
 
         val overlay = columnBox(
             1 to gapBox(),
-            1 to title.padX(2),
+            1 to title.padX(titlePadCols),
             1 to divider
         )
 
@@ -123,14 +128,14 @@ private fun BoxContext.passiveList(
         name = "ListBox",
         render = {
             maxLevels = edge.bounds.height / 3
-            val listBox = when (items.size) {
+            val listBox = when (itemLabels.size) {
                 0 -> messageBox("Empty", ColorSwatch(swatch.strokeColor, swatch.fillColor))
                 else -> {
                     val levelBoxes = (0 until (maxLevels + 1)).map { level ->
                         val i = topIndex + level
                         when {
                             i < 0 -> gapBox()
-                            i < items.size -> itemBox(i)
+                            i < itemLabels.size -> itemBox(i, edge.bounds.width)
                             else -> gapBox()
                         }
                     }

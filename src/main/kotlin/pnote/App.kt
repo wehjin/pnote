@@ -4,6 +4,7 @@
 package pnote
 
 import com.googlecode.lanterna.TextColor
+import kotlinx.coroutines.runBlocking
 import pnote.projections.projectBrowseNotes
 import pnote.projections.sandbox.BoxContext
 import pnote.projections.sandbox.BoxScreen
@@ -35,7 +36,11 @@ fun main(args: Array<String>) {
     val commandName = "pnote$commandSuffix"
     val app = App(commandName, "main")
     val story = app.browseNotesStory()
-    mainBoxContext().projectBrowseNotes(story)
+    runBlocking {
+        val boxContext = mainBoxContext()
+        boxContext.projectBrowseNotes(story).join()
+        boxContext.boxScreen.close()
+    }
 }
 
 fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {

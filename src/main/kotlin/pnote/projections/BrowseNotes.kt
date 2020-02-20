@@ -1,52 +1,122 @@
+@file:Suppress("EXPERIMENTAL_API_USAGE")
+
 package pnote.projections
 
 import com.rubyhuntersky.story.core.Story
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import pnote.mainBoxContext
 import pnote.projections.sandbox.*
+import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes
-import pnote.tools.Banner
+import pnote.stories.browseNotesStory
+import pnote.tools.*
 
-fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>) {
+fun main() {
+    val secret = password("abc")
+    val app = object : AppScope {
+        override val logTag: String = "BrowseNotes2ProjectionTest"
+        override val cryptor: Cryptor = memCryptor(secret, null)
+        override val noteBag: NoteBag = object : NoteBag {
+            override fun createNote(password: Password, note: Note): Long = error("Unused")
+            override fun readNote(password: Password, noteId: Long): Note {
+                return Note.Basic(
+                    title = StringHandle("Hey"),
+                    body = StringHandle("There"),
+                    noteId = noteId
+                )
+            }
+
+            override fun updateNote(password: Password, note: Note): Unit = error("Not Here")
+            override fun deleteNote(noteId: Long, password: Password): Unit = error("not implemented")
+            override fun readBanners(): ReadBannersResult {
+                return when (val accessLevel = cryptor.accessLevel) {
+                    AccessLevel.Empty -> ReadBannersResult(accessLevel, emptySet())
+                    AccessLevel.ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
+                    is AccessLevel.ConfidentialUnlocked -> ReadBannersResult(
+                        accessLevel,
+                        (1L..10).map { Banner.Basic(it, StringHandle("Banner$it")) }.toSet()
+                    )
+                }
+            }
+        }
+    }
+    val story = app.browseNotesStory()
+    val boxContext = mainBoxContext()
+    val projection = boxContext.projectBrowseNotes(story)
     runBlocking {
-        var subProjection: SubProjection? = null
-        fun isSubProjection(name: String): Boolean = (subProjection?.name ?: "") == name
-        fun clearSubProjection(name: String? = null) {
-            if (name == null || subProjection?.name == name) {
-                subProjection = null
-            }
-        }
-        visionLoop@ for (vision in story.subscribe()) {
-            println("${story.name}: $vision")
-            when (vision) {
-                BrowseNotes.Finished -> break@visionLoop
-                is BrowseNotes.Unlocking -> projectUnlockIdentity(vision.substory)
-                is BrowseNotes.Browsing -> projectBrowsing(story, vision, boxScreen).also { clearSubProjection() }
-                is BrowseNotes.Importing -> boxScreen.setBox(messageBox("$vision", surfaceSwatch))
-                is BrowseNotes.AwaitingDetails ->
-                    if (!isSubProjection(vision.substory.name)) {
-                        subProjection = projectNoteDetails(vision.substory)
-                    }
-            }
-        }
+        projection.join()
+        boxContext.boxScreen.close()
     }
-    boxScreen.close()
 }
 
-fun BoxContext.projectBrowsing(story: Story<BrowseNotes>, browsing: BrowseNotes.Browsing, boxScreen: BoxScreen) {
-    val pageSwatch = primaryDarkSwatch
-    val pageTitle = labelBox("CONFIDENTIAL", pageSwatch.strokeColor, Snap.TOP_RIGHT).pad(1)
-    val pageBackground = fillBox(pageSwatch.fillColor)
-    val pageUnderlay = pageTitle.before(pageBackground)
-
-    val banners = browsing.banners.toList()
-    // TODO: Make items a List<StringHandle>
-    val items = banners.map { (it as Banner.Basic).title.toCharSequence().toString() } + "Add Note"
-    val itemList = listBox(items) { index, _ ->
-        when (index) {
-            items.lastIndex -> story.offer(browsing.addNote("Another note"))
-            else -> story.offer(browsing.viewNote(noteId = banners[index].noteId))
+fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>): Job = GlobalScope.launch {
+    val subBoxContext = SubBoxContext()
+    for (browseNotes in story.subscribe()) {
+        println("PROJECT: $browseNotes")
+        when (browseNotes) {
+            is BrowseNotes.Unlocking -> {
+                subBoxContext.subProject(browseNotes.substory.name) {
+                    SubProjection(browseNotes.substory.name, projectUnlockIdentity(browseNotes.substory))
+                }
+            }
+            is BrowseNotes.Browsing -> {
+                subBoxContext.clear()
+                val banners = browseNotes.banners.toList()
+                if (banners.isEmpty()) {
+                    val backFill = fillBox(surfaceSwatch.fillColor)
+                    val addButton = textButtonBox(
+                        label = "Add Note",
+                        onPress = { TODO() }
+                    ).maxWidth(10).maxHeight(1)
+                    boxScreen.setBox(addButton.before(backFill))
+                } else {
+                    val bodyBox = messageBox("All Hidden", surfaceSwatch)
+                    val sideSwatch = backgroundSwatch
+                    val sideOver = columnBox(
+                        3 to titleBox("CONFIDENTIAL"),
+                        -1 to listRow(
+                            itemLabels = banners.map { (it as Banner.Basic).title.toCharSequence().toString() },
+                            bodyBox = bodyBox,
+                            swatch = sideSwatch,
+                            onActivate = { i -> story.offer(browseNotes.viewNote(banners[i].noteId)) }
+                        )
+                    )
+                    val sideUnder = fillBox(sideSwatch.fillColor)
+                    val sideBox = sideOver.before(sideUnder)
+                    boxScreen.setBox(bodyBox.packLeft(20, sideBox))
+                }
+            }
+            is BrowseNotes.AwaitingDetails -> subBoxContext.subProject(browseNotes.substory.name) {
+                projectNoteDetails(browseNotes.substory)
+            }
+            else -> boxScreen.setBox(messageBox(browseNotes.javaClass.simpleName, backgroundSwatch))
         }
     }
-    val page = itemList.maxWidth(50).before(pageUnderlay)
-    boxScreen.setBox(page)
 }
+
+private fun BoxContext.listRow(
+    itemLabels: List<String>,
+    bodyBox: Box<String>,
+    swatch: ColorSwatch,
+    onActivate: (Int) -> Unit
+): Box<*> {
+    val listSwatch = ListSwatch(swatch, primaryLightSwatch)
+    return listBox(itemLabels, listSwatch) { i, box ->
+        box.update(ListMotion.Activate)
+        bodyBox.update("${i + 1} Revealed")
+        onActivate(i)
+    }
+}
+
+private fun BoxContext.titleBox(title: String): Box<Void> {
+    val swatch = primarySwatch
+    return columnBox(
+        1 to gapBox(),
+        1 to labelBox(title, swatch.strokeColor, Snap.LEFT).padX(2),
+        1 to glyphBox('_', swatch.disabledColor)
+    ).before(fillBox(swatch.fillColor))
+}
+
