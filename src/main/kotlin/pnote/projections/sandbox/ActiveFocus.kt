@@ -89,7 +89,6 @@ class ActiveFocus(private val channel: SendChannel<RenderAction>) {
     }
 
     private fun moveFocusLinear(forward: Boolean) {
-        println("FOCUSABLES COUNT: ${focusables.size}")
         if (focusables.size >= 2) {
             val nextFocusId = selectNewFocus(focusId, forward)
             nextFocusId?.let {
