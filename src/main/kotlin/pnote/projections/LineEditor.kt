@@ -9,6 +9,9 @@ class LineEditor(
     private var cursorCharsIndex: Int = 0
     private val leftVisibleColumns = 2
 
+    val currentChars: List<Char>
+        get() = chars.toList()
+
     val cursorIndex: Int get() = cursorCharsIndex
 
     fun wash() {

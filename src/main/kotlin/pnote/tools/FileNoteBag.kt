@@ -1,8 +1,8 @@
 package pnote.tools
 
-import pnote.projections.StringHandle
 import pnote.tools.security.bag.CipherBag
 import pnote.tools.security.item.PlainType
+import pnote.tools.security.plain.PlainDocument
 import java.io.File
 
 class FileNoteBag(dir: File, private val cryptor: Cryptor) : NoteBag {
@@ -51,7 +51,7 @@ class FileNoteBag(dir: File, private val cryptor: Cryptor) : NoteBag {
                 banners = bag.map(accessLevel.password.chars, PlainType.Text) {
                     Banner.Basic(
                         noteId = noteId(itemId),
-                        title = StringHandle(plainValue)
+                        plainDoc = PlainDocument(plainValue.toCharArray())
                     )
                 })
         }
@@ -60,14 +60,13 @@ class FileNoteBag(dir: File, private val cryptor: Cryptor) : NoteBag {
 }
 
 private fun toPlain(note: Note): String {
-    return (note as Note.Basic).title.toCharSequence().toString()
+    return (note as Note.Basic).plainDoc.toCharSequence().toString()
 }
 
 private fun toNote(noteId: Long, plain: String): Note {
     return Note.Basic(
         noteId = noteId,
-        title = StringHandle(plain),
-        body = StringHandle(plain)
+        plainDoc = PlainDocument(plain.toCharArray())
     )
 }
 

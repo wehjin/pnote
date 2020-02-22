@@ -5,25 +5,33 @@ import com.rubyhuntersky.story.core.matchingStory
 import com.rubyhuntersky.story.core.scopes.offerWhenStoryEnds
 import com.rubyhuntersky.story.core.scopes.on
 import com.rubyhuntersky.story.core.scopes.onAction
-import pnote.projections.StringHandle
 import pnote.scopes.AppScope
 import pnote.stories.NoteDetails.*
 import pnote.stories.NoteDetailsAction.*
 import pnote.tools.Note
 import pnote.tools.Password
+import pnote.tools.security.plain.PlainDocument
 
 
-fun AppScope.noteDetailsStory(password: Password, noteId: Long, title: StringHandle): Story<NoteDetails> {
+fun AppScope.noteDetailsStory(
+    password: Password,
+    noteId: Long,
+    plainDoc: PlainDocument
+): Story<NoteDetails> {
     return matchingStory(
         name = "NoteDetails",
-        toFirstVision = { Viewing(title) },
+        toFirstVision = { Viewing(plainDoc) },
         isLastVision = { it is FinishedViewing },
         updateRules = {
-            onAction<Cancel, NoteDetails> { FinishedViewing }
+
+            onAction<Cancel, NoteDetails> {
+                plainDoc.close()
+                FinishedViewing
+            }
 
             onAction<Reload, NoteDetails> {
                 val note = noteBag.readNote(password, noteId) as Note.Basic
-                Viewing(note.title)
+                Viewing(note.plainDoc)
             }
 
             on<Edit, NoteDetails, Viewing> {
@@ -36,8 +44,8 @@ fun AppScope.noteDetailsStory(password: Password, noteId: Long, title: StringHan
 }
 
 sealed class NoteDetails {
-    data class Viewing(val title: StringHandle) : NoteDetails() {
-        fun edit(title: StringHandle): Any = Edit(title)
+    data class Viewing(val plainDoc: PlainDocument) : NoteDetails() {
+        fun edit(plainDoc: PlainDocument): Any = Edit(plainDoc)
     }
 
     data class Editing(val story: Story<EditNote>) : NoteDetails()
@@ -50,6 +58,6 @@ sealed class NoteDetails {
 
 private sealed class NoteDetailsAction {
     object Cancel : NoteDetailsAction()
-    data class Edit(val title: StringHandle) : NoteDetailsAction()
+    data class Edit(val plainDoc: PlainDocument) : NoteDetailsAction()
     object Reload : NoteDetailsAction()
 }

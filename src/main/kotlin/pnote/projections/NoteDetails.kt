@@ -12,14 +12,14 @@ import pnote.stories.NoteDetails
 import pnote.stories.NoteDetails.*
 import pnote.stories.noteDetailsStory
 import pnote.tools.*
+import pnote.tools.security.plain.PlainDocument
 import pnote.userDir
 
 fun main() {
     val password = password("a")
     val initNote = Note.Basic(
-        title = StringHandle("Ho ho ho"),
-        body = StringHandle("Full of sound and fury, signifying nothing"),
-        noteId = 1001
+        noteId = 1001,
+        plainDoc = PlainDocument("Ho ho ho\nFull of sound and fury, signifying nothing".toCharArray())
     )
     val app = object : AppScope {
         override val logTag: String = "note-details-projection-test"
@@ -28,7 +28,7 @@ fun main() {
     }
     app.noteBag.updateNote(password, initNote)
 
-    val story = app.noteDetailsStory(password, initNote.noteId, initNote.title)
+    val story = app.noteDetailsStory(password, initNote.noteId, initNote.plainDoc)
     val boxContext = mainBoxContext()
     runBlocking { boxContext.projectNoteDetails(story).job.join() }
     boxContext.boxScreen.close()
@@ -43,7 +43,7 @@ fun BoxContext.projectNoteDetails(story: Story<NoteDetails>): SubProjection =
                 is FinishedViewing -> break@visionLoop
                 is Viewing -> {
                     val leftPadding = 15
-                    val descriptionRow = descriptionRow(vision.title.toCharSequence(), leftPadding)
+                    val descriptionRow = descriptionRow(vision.plainDoc.toCharSequence(), leftPadding)
                     val actionsRow = actionsRow(leftPadding, boxScreen, vision, story)
                     val headerRow = fillBox(backgroundSwatch.fillColor)
                     val pageBox = descriptionRow.packTop(3, actionsRow).packTop(10, headerRow)
@@ -77,7 +77,7 @@ private fun BoxContext.actionsRow(
     val editButton = buttonBox(
         text = "Edit",
         options = styleOptions + PressReader {
-            story.offer(vision.edit(vision.title))
+            story.offer(vision.edit(vision.plainDoc))
             boxScreen.refreshScreen()
         }
     )

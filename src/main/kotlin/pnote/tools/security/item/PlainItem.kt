@@ -26,7 +26,7 @@ sealed class PlainType<T : Any> {
     abstract fun asValue(bytes: ByteArray): T
     abstract fun asByteArray(value: T): ByteArray
 
-    // TODO: Make this a StringHandle
+    // TODO: Make this a PlainDocument
     object Text : PlainType<String>() {
         override val valueClass: Class<String> = String::class.java
         override fun asValue(bytes: ByteArray): String = bytes.toString(Charsets.UTF_8)

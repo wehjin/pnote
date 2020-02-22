@@ -33,13 +33,12 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
             val box = when (vision) {
                 is UnlockIdentity.Done -> messageBox(vision.name, backgroundSwatch)
                 is UnlockIdentity.Unlocking -> {
-                    // TODO Switch prefix to simple String
-                    val prefix = StringHandle("")
-                    val phrase = StringHandle("")
+                    var prefix = ""
+                    var phrase = listOf<Char>()
 
                     fun update(prefixChars: List<Char>?, phraseChars: List<Char>?) {
-                        prefixChars?.let { prefix.set(it) }
-                        phraseChars?.let { phrase.set(it) }
+                        prefixChars?.let { prefix = String(it.toCharArray()) }
+                        phraseChars?.let { phrase = it }
                         boxScreen.refreshScreen()
                     }
 
@@ -51,7 +50,7 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
                                 line = prefix,
                                 swatch = surfaceSwatch,
                                 toExtra = {
-                                    val chars = prefix.toCharSequence().trim()
+                                    val chars = prefix.trim()
                                     if (chars.isEmpty() || isValidSolNamePrefix(chars)) {
                                         ExtraLabel.Info("Ex: ada-lovelace")
                                     } else {
@@ -63,7 +62,7 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
                             1 to gapBox(),
                             4 to lineEditBox(
                                 label = "Secret",
-                                line = phrase,
+                                line = String(phrase.toCharArray()),
                                 swatch = surfaceSwatch,
                                 toExtra = { ExtraLabel.Info("Ex: password1234") },
                                 onChange = { update(null, it) }
@@ -72,14 +71,14 @@ fun BoxContext.projectUnlockIdentity(story: Story2<UnlockIdentity>): Job {
                             1 to dialogActionsBox(
                                 actions = listOf(
                                     DialogAction("Cancel"),
-                                    DialogAction("Unlock") { isValidSolNamePrefix(prefix.toCharSequence().trim()) }
+                                    DialogAction("Unlock") { isValidSolNamePrefix(prefix.trim()) }
                                 ),
                                 onPress = {
                                     when (it) {
                                         0 -> vision.cancel()
                                         1 -> {
-                                            val name = prefix.toCharSequence().trim().toString()
-                                            val secretChars = phrase.toCharSequence().toString().toCharArray()
+                                            val name = prefix.trim()
+                                            val secretChars = phrase.toCharArray()
                                             vision.setSolName(name, secretChars)
                                         }
                                     }

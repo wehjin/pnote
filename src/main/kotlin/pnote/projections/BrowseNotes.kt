@@ -13,6 +13,7 @@ import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes
 import pnote.stories.browseNotesStory
 import pnote.tools.*
+import pnote.tools.security.plain.PlainDocument
 
 fun main() {
     val secret = password("abc")
@@ -23,9 +24,8 @@ fun main() {
             override fun createNote(password: Password, note: Note): Long = error("Unused")
             override fun readNote(password: Password, noteId: Long): Note {
                 return Note.Basic(
-                    title = StringHandle("Hey"),
-                    body = StringHandle("There"),
-                    noteId = noteId
+                    noteId = noteId,
+                    plainDoc = PlainDocument("Hey\nThere".toCharArray())
                 )
             }
 
@@ -37,7 +37,9 @@ fun main() {
                     AccessLevel.ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
                     is AccessLevel.ConfidentialUnlocked -> ReadBannersResult(
                         accessLevel,
-                        (1L..10).map { Banner.Basic(it, StringHandle("Banner$it")) }.toSet()
+                        (1L..10).map {
+                            Banner.Basic(it, PlainDocument("Banner$it".toCharArray()))
+                        }.toSet()
                     )
                 }
             }
@@ -78,7 +80,7 @@ fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>): Job = GlobalScope.
                     val sideOver = columnBox(
                         3 to titleBox("CONFIDENTIAL"),
                         -1 to listRow(
-                            itemLabels = banners.map { (it as Banner.Basic).title.toCharSequence().toString() },
+                            itemLabels = banners.map { (it as Banner.Basic).plainDoc.toCharSequence().toString() },
                             bodyBox = bodyBox,
                             swatch = sideSwatch,
                             onActivate = { i -> story.offer(browseNotes.viewNote(banners[i].noteId)) }

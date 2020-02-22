@@ -3,9 +3,9 @@ package pnote.stories
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import pnote.projections.StringHandle
 import pnote.scopes.AppScope
 import pnote.tools.*
+import pnote.tools.security.plain.PlainDocument
 import story.core.scan
 
 
@@ -14,9 +14,8 @@ internal class EditNoteKtTest {
     private val password = password("a")
     private val initNoteId: Long = 1001
     private val initNote = Note.Basic(
-        title = StringHandle("Ho ho ho"),
-        body = StringHandle("Full of sound and fury, signifying nothing"),
-        noteId = initNoteId
+        noteId = initNoteId,
+        plainDoc = PlainDocument("Ho ho ho\nFull of sound and fury, signifying nothing".toCharArray())
     )
     private val app =
         object : AppScope {
@@ -32,12 +31,13 @@ internal class EditNoteKtTest {
     @Test
     internal fun `story saves note to note-bag`() {
         val newTitle = "Be bim bop"
+        val newBody = "it is a nutritional meal"
         runBlocking {
             val editing = story.subscribe().receive() as EditNote.Editing
-            story.offer(editing.save(StringHandle(newTitle), StringHandle("it is a nutritional meal")))
+            story.offer(editing.save(newTitle, newBody))
             story.scan(1000) { it as? EditNote.FinishedEditing }
             val afterNote = app.noteBag.readNote(password, initNoteId) as Note.Basic
-            assertEquals(newTitle, afterNote.title.toCharSequence())
+            assertEquals("$newTitle\n$newBody", afterNote.plainDoc.toCharSequence().toString())
         }
     }
 }

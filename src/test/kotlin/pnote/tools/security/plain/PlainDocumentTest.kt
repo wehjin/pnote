@@ -15,13 +15,13 @@ internal class PlainDocumentTest {
 
     @Test
     internal fun `document converts to char-sequence`() {
-        val charSequence = doc.asCharSequence()
+        val charSequence = doc.toCharSequence()
         assertEquals(paragraphs.joinToString("\n"), charSequence.toString())
     }
 
     @Test
     internal fun `document converts to full-paragraph lines when no width is provided`() {
         val lines = doc.asLines()
-        assertEquals(paragraphs, lines.map { it.asCharSequence().toString() })
+        assertEquals(paragraphs, lines.map { it.toCharSequence().toString() })
     }
 }

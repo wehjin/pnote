@@ -6,7 +6,6 @@ import com.rubyhuntersky.story.core.scopes.StoryInitScope
 import com.rubyhuntersky.story.core.scopes.offerWhenStoryEnds
 import com.rubyhuntersky.story.core.scopes.on
 import com.rubyhuntersky.story.core.scopes.onAction
-import pnote.projections.StringHandle
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes.*
 import pnote.stories.BrowseNotesAction.*
@@ -14,6 +13,7 @@ import pnote.tools.AccessLevel.*
 import pnote.tools.Banner
 import pnote.tools.Note
 import pnote.tools.Password
+import pnote.tools.security.plain.PlainDocument
 
 fun AppScope.browseNotesStory(): Story<BrowseNotes> = matchingStory(
     name = "BrowseNotes",
@@ -27,15 +27,15 @@ fun AppScope.browseNotesStory(): Story<BrowseNotes> = matchingStory(
             init(this)
         }
         on<AddNote, BrowseNotes, Browsing> {
-            val title = StringHandle(action.title)
-            title.use { noteBag.createNote(vision.password, Note.Basic(title)) }
+            val note = Note.Basic(plainDoc = PlainDocument(action.title.toCharArray()))
+            noteBag.createNote(vision.password, note)
             init(this)
         }
         on<ViewNote, BrowseNotes, Browsing> {
             val banner = vision.banners.firstOrNull { it.noteId == action.noteId } as? Banner.Basic
             if (banner == null) vision
             else {
-                val substory = noteDetailsStory(vision.password, action.noteId, banner.title)
+                val substory = noteDetailsStory(vision.password, action.noteId, banner.plainDoc)
                 whenSubstoryEnds(substory) { offer(Reload) }
                 AwaitingDetails(substory)
             }

@@ -1,8 +1,15 @@
 package pnote.tools.security.plain
 
+import java.io.Closeable
 import java.nio.CharBuffer
+import kotlin.random.Random
 
-class PlainDocument(chars: CharArray) {
+class PlainDocument(chars: CharArray) : Closeable {
+    constructor(string: String) : this(string.toCharArray())
+
+    override fun close() {
+        charBuffer.indices.forEach { charBuffer.put(it, Random.nextInt().toChar()) }
+    }
 
     fun asLines(): List<Line> {
         return paragraphs.map {
@@ -14,7 +21,7 @@ class PlainDocument(chars: CharArray) {
         private val document: PlainDocument,
         val maxLength: LineLength, val start: Int, val end: Int
     ) {
-        fun asCharSequence(): CharSequence = document.asCharSequence(start, end)
+        fun toCharSequence(): CharSequence = document.toCharSequence(start, end)
     }
 
     sealed class LineLength {
@@ -32,11 +39,11 @@ class PlainDocument(chars: CharArray) {
 
     data class Paragraph(val start: Int, val end: Int)
 
-    fun asCharSequence(): CharSequence {
+    fun toCharSequence(): CharSequence {
         return charBuffer
     }
 
-    fun asCharSequence(start: Int, end: Int): CharSequence {
+    fun toCharSequence(start: Int, end: Int): CharSequence {
         return charBuffer.subSequence(start until end)
     }
 

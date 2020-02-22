@@ -31,9 +31,10 @@ class ScreenSpot(
     override fun setGlyph(glyph: Char, glyphColor: TextColor, glyphZ: Int) {
         if (glyphZ <= glyphMinZ) {
             val color = getOldColor()
+            val displayGlyph = if (glyph.isISOControl()) '~' else glyph
             screen.setCharacter(
                 col, row,
-                TextCharacter(glyph, glyphColor, color)
+                TextCharacter(displayGlyph, glyphColor, color)
             )
             glyphMinZ = glyphZ
         }
