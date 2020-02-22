@@ -132,14 +132,14 @@ fun BoxContext.lineEditBox(
                     label = label,
                     swatch = swatch,
                     focusSwatch = cursorSwatch
-                ).render(this.withEdgeBounds(frameBounds))
+                ).render(withEdgeBounds(frameBounds))
             } else {
                 unfocusedEditFrame(
                     label = label,
                     labelAtTop = editor.charCount > 0,
                     swatch = swatch,
                     glyphSwatch = (extra as? ExtraLabel.Error)?.let { errorSwatch } ?: swatch
-                ).render(this.withEdgeBounds(frameBounds))
+                ).render(withEdgeBounds(frameBounds))
             }
             if (editBounds.contains(col, row)) {
                 val editIndex = col - editBounds.left
@@ -151,14 +151,14 @@ fun BoxContext.lineEditBox(
                 }
             }
             if (extra != null) {
-                val bounds = boxBounds.confineToBottom()
                 val color = when (extra) {
                     is ExtraLabel.Info -> swatch.disabledColor
                     is ExtraLabel.Error -> if (activeFocusId == id) errorSwatch.fillColor else errorSwatch.mediumColor
                 }
                 val labelBox = labelBox(extra.label, color, Snap.LEFT).padX(1)
-                labelBox.render(this.withEdgeBounds(bounds))
+                labelBox.render(withEdgeBounds(boxBounds.confineToBottom()))
             }
+            edge.bounds.z
         },
         focus = {
             setFocusable(
@@ -227,6 +227,7 @@ fun BoxContext.editBox(body: StringHandle): Box<Void> {
                     editor.getChar(leftInset, topInset)?.let { setGlyph(it, swatch.strokeColor, bounds.z) }
                 }
             }
+            edge.bounds.z
         },
         focus = {
             setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->

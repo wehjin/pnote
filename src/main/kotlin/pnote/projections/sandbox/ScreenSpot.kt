@@ -57,8 +57,8 @@ class ScreenSpot(
         return oldCharacter.let { Pair(it.character, it.foregroundColor) }
     }
 
-    private fun oldCharacter(glyphMinZ1: Int): TextCharacter =
-        when (glyphMinZ1) {
+    private fun oldCharacter(glyphMinZ: Int): TextCharacter =
+        when (glyphMinZ) {
             Int.MIN_VALUE -> screen.getFrontCharacter(col, row)
             else -> screen.getBackCharacter(col, row)
         }

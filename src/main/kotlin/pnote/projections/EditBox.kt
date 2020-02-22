@@ -1,6 +1,7 @@
 package pnote.projections
 
 import pnote.projections.sandbox.*
+import java.lang.Integer.min
 
 private const val labelInset = 1
 
@@ -18,14 +19,14 @@ fun BoxContext.unfocusedEditFrame(
     return box(
         name = "LineBox",
         render = {
-            val bounds = edge.bounds
-            fillBox.render(this)
-            scoreBox.render(withEdgeBounds(bounds.confineToBottom()))
-            if (labelAtTop) {
-                labelBox.render(withEdgeBounds(bounds.confineToTop().insetX(labelInset)))
+            val fillZ = fillBox.render(this)
+            val scoreZ = scoreBox.render(withEdgeBounds(edge.bounds.confineToBottom()))
+            val labelZ = if (labelAtTop) {
+                labelBox.render(withEdgeBounds(edge.bounds.confineToTop().insetX(labelInset)))
             } else {
-                labelBox.render(withEdgeBounds(bounds.confineToY(1).insetX(labelInset)))
+                labelBox.render(withEdgeBounds(edge.bounds.confineToY(1).insetX(labelInset)))
             }
+            min(min(fillZ, scoreZ), labelZ)
         },
         focus = noFocus,
         setContent = noContent
@@ -41,10 +42,10 @@ fun BoxContext.focusedEditFrame(label: String, swatch: ColorSwatch, focusSwatch:
     return box(
         name = "LineBox",
         render = {
-            val bounds = edge.bounds
-            fillBox.render(this)
-            focusScoreBox.render(withEdgeBounds(bounds.confineToBottom()))
-            focusLabelBox.render(withEdgeBounds(bounds.confineToTop().insetX(labelInset)))
+            val fillZ = fillBox.render(this)
+            val scoreZ = focusScoreBox.render(withEdgeBounds(edge.bounds.confineToBottom()))
+            val labelZ = focusLabelBox.render(withEdgeBounds(edge.bounds.confineToTop().insetX(labelInset)))
+            min(min(fillZ, scoreZ), labelZ)
         },
         focus = noFocus,
         setContent = noContent

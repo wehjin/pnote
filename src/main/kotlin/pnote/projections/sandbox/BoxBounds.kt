@@ -3,11 +3,11 @@ package pnote.projections.sandbox
 import java.lang.Integer.max
 
 data class BoxBounds(
-    var right: Int = 0,
-    var bottom: Int = 0,
-    var left: Int = 0,
-    var top: Int = 0,
-    var z: Int = 0
+    val right: Int = 0,
+    val bottom: Int = 0,
+    val left: Int = 0,
+    val top: Int = 0,
+    val z: Int = 0
 ) {
     val width: Int get() = max(0, right - left)
     val height: Int get() = max(0, bottom - top)
@@ -25,14 +25,6 @@ data class BoxBounds(
 
     fun leftInset(x: Int): Int =
         x - this.left
-
-    fun set(value: BoxBounds) {
-        this.right = value.right
-        this.bottom = value.bottom
-        this.left = value.left
-        this.top = value.top
-        this.z = value.z
-    }
 
     fun shiftZ(delta: Int): BoxBounds =
         copy(z = z + delta)
@@ -56,8 +48,8 @@ data class BoxBounds(
     }
 
     private fun partitionHeight(middle: Int): Pair<BoxBounds, BoxBounds> {
-        val topBounds = BoxBounds(right, middle, left, top)
-        val bottomBounds = BoxBounds(right, bottom, left, middle)
+        val topBounds = copy(bottom = middle)
+        val bottomBounds = copy(top = middle)
         return Pair(topBounds, bottomBounds)
     }
 
@@ -72,8 +64,8 @@ data class BoxBounds(
     }
 
     private fun partitionWidth(middle: Int): Pair<BoxBounds, BoxBounds> {
-        val leftBounds = BoxBounds(middle, bottom, left, top)
-        val rightBounds = BoxBounds(right, bottom, middle, top)
+        val leftBounds = copy(right = middle)
+        val rightBounds = copy(left = middle)
         return Pair(leftBounds, rightBounds)
     }
 
@@ -90,8 +82,7 @@ data class BoxBounds(
         val nextRight = nextLeft + width
         val nextTop = this.top + (extraHeight * snap.y).toInt()
         val nextBottom = nextTop + height
-        val nextZ = this.z
-        return BoxBounds(nextRight, nextBottom, nextLeft, nextTop, nextZ)
+        return copy(right = nextRight, bottom = nextBottom, left = nextLeft, top = nextTop)
     }
 
     fun <T> map(block: (col: Int, row: Int) -> T): List<T> {

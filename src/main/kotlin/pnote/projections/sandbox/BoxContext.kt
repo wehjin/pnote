@@ -66,6 +66,7 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
                     setCursor(col, row)
                 }
             }
+            edge.bounds.z
         },
         focus = {
             setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
@@ -100,6 +101,7 @@ fun BoxContext.labelBox(text: CharSequence, textColor: TextColor, snap: Snap = S
             if (labelBounds.hits(col, row, glyphMinZ)) {
                 setGlyph(label[labelBounds.leftInset(col)], textColor, labelBounds.z)
             }
+            edge.bounds.z
         },
         focus = noFocus,
         setContent = { label = it }
@@ -115,6 +117,7 @@ fun BoxContext.fillBox(color: TextColor?): Box<Void> = box(
         if (edge.bounds.contains(col, row) && color != null) {
             setColor(color, edge.bounds.z)
         }
+        edge.bounds.z
     },
     focus = noFocus,
     setContent = noContent
@@ -126,6 +129,7 @@ fun BoxContext.glyphBox(glyph: Char, color: TextColor): Box<Void> = box(
         if (edge.bounds.contains(col, row)) {
             setGlyph(glyph, color, edge.bounds.z)
         }
+        edge.bounds.z
     },
     focus = noFocus,
     setContent = noContent
@@ -133,7 +137,7 @@ fun BoxContext.glyphBox(glyph: Char, color: TextColor): Box<Void> = box(
 
 fun <T> BoxContext.box(
     name: String,
-    render: SpotScope.() -> Unit,
+    render: SpotScope.() -> Int,
     focus: FocusScope.() -> Unit,
     setContent: (content: T) -> Unit
 ): Box<T> = object : Box<T>, BoxContext by this {

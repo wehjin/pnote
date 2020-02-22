@@ -1,78 +1,75 @@
 package pnote.projections.sandbox
 
 import com.googlecode.lanterna.input.KeyStroke
+import java.lang.Integer.min
 
 
-fun <T, U> Box<T>.packRight(width: Int, box: Box<U>): Box<Void> = box(
-    name = "${this.name}|${box.name}",
-    render = {
-        val (leftBounds, rightBounds) = edge.bounds.partitionRight(width)
-        this@packRight.render(withEdgeBounds(leftBounds))
-        box.render(withEdgeBounds(rightBounds))
-    },
-    focus = {
-        val (leftBounds, rightBounds) = edge.bounds.partitionRight(width)
-        this@packRight.focus(withEdgeBounds(leftBounds))
-        box.focus(withEdgeBounds(rightBounds))
-    },
-    setContent = noContent
-)
+fun <T, U> Box<T>.pack(
+    name: String,
+    packBox: Box<U>,
+    partition: BoxBounds.() -> Pair<BoxBounds, BoxBounds>
+): Box<Void> {
+    return box(
+        name = name,
+        render = {
+            val (aBounds, bBounds) = edge.bounds.partition()
+            val aZ = this@pack.render(withEdgeBounds(aBounds))
+            val bZ = packBox.render(withEdgeBounds(bBounds))
+            min(aZ, bZ)
+        },
+        focus = {
+            val (aBounds, bBounds) = edge.bounds.partition()
+            this@pack.focus(withEdgeBounds(aBounds))
+            packBox.focus(withEdgeBounds(bBounds))
+        },
+        setContent = noContent
+    )
+}
 
-fun <T, U> Box<T>.packLeft(width: Int, box: Box<U>): Box<Void> = box(
-    name = "${box.name}|${this.name}",
-    render = {
-        val (leftBounds, rightBounds) = edge.bounds.partitionLeft(width)
-        this@packLeft.render(withEdgeBounds(rightBounds))
-        box.render(withEdgeBounds(leftBounds))
-    },
-    focus = {
-        val (leftBounds, rightBounds) = edge.bounds.partitionLeft(width)
-        this@packLeft.focus(withEdgeBounds(rightBounds))
-        box.focus(withEdgeBounds(leftBounds))
-    },
-    setContent = noContent
-)
+fun <T, U> Box<T>.packRight(width: Int, box: Box<U>): Box<Void> {
+    return pack(
+        name = "$name|${box.name}",
+        packBox = box,
+        partition = { this.partitionRight(width) }
+    )
+}
 
-fun <T, U> Box<T>.packTop(height: Int, box: Box<U>): Box<Void> = box(
-    name = "${box.name}/$name",
-    render = {
-        val (topBounds, bottomBounds) = edge.bounds.partitionTop(height)
-        box.render(withEdgeBounds(topBounds))
-        this@packTop.render(withEdgeBounds(bottomBounds))
-    },
-    focus = {
-        val (topBounds, bottomBounds) = edge.bounds.partitionTop(height)
-        box.focus(withEdgeBounds(topBounds))
-        this@packTop.focus(withEdgeBounds(bottomBounds))
-    },
-    setContent = noContent
-)
+fun <T, U> Box<T>.packBottom(height: Int, box: Box<U>): Box<Void> {
+    return pack(
+        name = "$name/${box.name}",
+        packBox = box,
+        partition = { this.partitionBottom(height) }
+    )
+}
 
-fun <T, U> Box<T>.packBottom(height: Int, box: Box<U>): Box<Void> = box(
-    name = "$name/${box.name}",
-    render = {
-        val (topBounds, bottomBounds) = edge.bounds.partitionBottom(height)
-        this@packBottom.render(withEdgeBounds(topBounds))
-        box.render(withEdgeBounds(bottomBounds))
-    },
-    focus = {
-        val (topBounds, bottomBounds) = edge.bounds.partitionBottom(height)
-        this@packBottom.focus(withEdgeBounds(topBounds))
-        box.focus(withEdgeBounds(bottomBounds))
-    },
-    setContent = noContent
-)
+fun <T, U> Box<T>.packLeft(width: Int, box: Box<U>): Box<Void> {
+    return pack(
+        name = "${box.name}|$name",
+        packBox = box,
+        partition = { partitionLeft(width).let { Pair(it.second, it.first) } }
+    )
+}
 
-// TODO: Clean up duplication with a multi-box mapEdge
+fun <T, U> Box<T>.packTop(height: Int, box: Box<U>): Box<Void> {
+    return pack(
+        name = "${box.name}/$name",
+        packBox = box,
+        partition = { partitionTop(height).let { Pair(it.second, it.first) } }
+    )
+}
+
 fun <T, U> Box<T>.before(aftBox: Box<U>): Box<Void> = box(
-    name = "${this.name}\\${aftBox.name}",
+    name = "$name\\${aftBox.name}",
     render = {
-        aftBox.render(this.withEdgeBounds(edge.bounds.shiftZ(0)))
-        this@before.render(this.withEdgeBounds(edge.bounds.shiftZ(-1)))
+        val aftZ = aftBox.render(this)
+        val foreZ = this@before.render(withEdgeBounds(edge.bounds.copy(z = aftZ - 1)))
+        min(aftZ, foreZ)
     },
     focus = {
-        aftBox.focus(this.withEdgeBounds(edge.bounds.shiftZ(0)))
-        this@before.focus(this.withEdgeBounds(edge.bounds.shiftZ(-1)))
+        // TODO: Fix z handling for focus. This is wrong. Should probably behave like render.
+        // do something different from render to calculating z.
+        aftBox.focus(this)
+        this@before.focus(withEdgeBounds(edge.bounds.shiftZ(-1)))
     },
     setContent = noContent
 )
@@ -122,7 +119,7 @@ fun <T> Box<T>.focusable(id: Long, onKey: FocusKeyScope.() -> Boolean): Box<T> =
 
 interface Box<in T> : BoxContext {
     val name: String
-    fun render(spotScope: SpotScope)
+    fun render(spotScope: SpotScope): Int
     fun focus(focusScope: FocusScope)
     fun update(motion: T)
 }
