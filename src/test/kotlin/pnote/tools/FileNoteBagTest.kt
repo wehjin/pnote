@@ -16,7 +16,7 @@ internal class FileNoteBagTest {
 
     @Test
     internal fun `bag starts empty`() {
-        val (accessLevel, banners) = bag.readBanners()
+        val (accessLevel, banners) = bag.readNotes()
         accessLevel as AccessLevel.ConfidentialUnlocked
         assertEquals(0, banners.size)
     }
@@ -24,10 +24,10 @@ internal class FileNoteBagTest {
     @Test
     internal fun `bag adds and removes notes`() {
         val noteId = bag.createNote(secret, Note.Basic(plainDoc = PlainDocument("hello")))
-        assertEquals(1, bag.readBanners().banners.size)
+        assertEquals(1, bag.readNotes().notes.size)
 
         bag.deleteNote(noteId, secret)
-        assertEquals(0, bag.readBanners().banners.size)
+        assertEquals(0, bag.readNotes().notes.size)
     }
 
     @Test

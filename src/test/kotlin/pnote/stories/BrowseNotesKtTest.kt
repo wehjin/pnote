@@ -13,7 +13,7 @@ import story.core.scan
 
 internal class BrowseNotesKtTest {
 
-    private val bannerSet = mutableSetOf(Banner.Basic(1, PlainDocument("Hello".toCharArray())))
+    private val noteSet = mutableSetOf(Note.Basic(1, PlainDocument("Hello".toCharArray())))
 
     private val appScope = object : AppScope {
         override val logTag: String = "${this.javaClass.simpleName}/happy"
@@ -24,7 +24,7 @@ internal class BrowseNotesKtTest {
 
             override fun createNote(password: Password, note: Note): Long {
                 note as Note.Basic
-                bannerSet.add(Banner.Basic(note.noteId, note.plainDoc))
+                noteSet.add(Note.Basic(note.noteId, note.plainDoc))
                 return note.noteId
             }
 
@@ -32,10 +32,10 @@ internal class BrowseNotesKtTest {
             override fun updateNote(password: Password, note: Note) = error("not implemented")
             override fun deleteNote(noteId: Long, password: Password): Unit = error("not implemented")
 
-            override fun readBanners(): ReadBannersResult = when (val accessLevel = cryptor.accessLevel) {
-                Empty -> ReadBannersResult(accessLevel, emptySet())
-                ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
-                is ConfidentialUnlocked -> ReadBannersResult(accessLevel, bannerSet)
+            override fun readNotes(): ReadNotesResult = when (val accessLevel = cryptor.accessLevel) {
+                Empty -> ReadNotesResult(accessLevel, emptySet())
+                ConfidentialLocked -> ReadNotesResult(accessLevel, emptySet())
+                is ConfidentialUnlocked -> ReadNotesResult(accessLevel, noteSet)
             }
         }
     }
@@ -70,7 +70,7 @@ internal class BrowseNotesKtTest {
         val story = appScope.browseNotesStory()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }
-            assertEquals(bannerSet, browsing.banners)
+            assertEquals(noteSet, browsing.notes)
 
             browsing.cancel()
             story.scan(500) { it as? Finished }
@@ -83,14 +83,14 @@ internal class BrowseNotesKtTest {
         val story = appScope.browseNotesStory()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }
-            assertEquals(bannerSet, browsing.banners)
+            assertEquals(noteSet, browsing.notes)
 
             browsing.addNote("Adios")
             val browsing2 = story.scan(500) { vision ->
-                (vision as? Browsing)?.let { if (it.banners.size > 1) it else null }
+                (vision as? Browsing)?.let { if (it.notes.size > 1) it else null }
             }
-            val titles = browsing2.banners
-                .map { (it as Banner.Basic).plainDoc.toCharSequence().toString() }
+            val titles = browsing2.notes
+                .map { it.plainDoc.toCharSequence().toString() }
                 .toSet()
             assertTrue(titles.contains("Adios"))
         }

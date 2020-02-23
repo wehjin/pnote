@@ -36,20 +36,20 @@ class FileNoteBag(dir: File, private val cryptor: Cryptor) : NoteBag {
     }
 
 
-    override fun readBanners(): ReadBannersResult =
+    override fun readNotes(): ReadNotesResult =
         when (val accessLevel = cryptor.accessLevel) {
-            AccessLevel.Empty -> ReadBannersResult(
+            AccessLevel.Empty -> ReadNotesResult(
                 accessLevel,
                 emptySet()
             )
-            AccessLevel.ConfidentialLocked -> ReadBannersResult(
+            AccessLevel.ConfidentialLocked -> ReadNotesResult(
                 accessLevel,
                 emptySet()
             )
-            is AccessLevel.ConfidentialUnlocked -> ReadBannersResult(
+            is AccessLevel.ConfidentialUnlocked -> ReadNotesResult(
                 accessLevel = accessLevel,
-                banners = bag.map(accessLevel.password.chars, PlainType.Text) {
-                    Banner.Basic(
+                notes = bag.map(accessLevel.password.chars, PlainType.Text) {
+                    Note.Basic(
                         noteId = noteId(itemId),
                         plainDoc = PlainDocument(plainValue.toCharArray())
                     )

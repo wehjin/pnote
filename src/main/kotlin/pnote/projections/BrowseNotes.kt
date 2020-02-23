@@ -32,14 +32,14 @@ fun main() {
 
             override fun updateNote(password: Password, note: Note): Unit = error("Not Here")
             override fun deleteNote(noteId: Long, password: Password): Unit = error("not implemented")
-            override fun readBanners(): ReadBannersResult {
+            override fun readNotes(): ReadNotesResult {
                 return when (val accessLevel = cryptor.accessLevel) {
-                    AccessLevel.Empty -> ReadBannersResult(accessLevel, emptySet())
-                    AccessLevel.ConfidentialLocked -> ReadBannersResult(accessLevel, emptySet())
-                    is AccessLevel.ConfidentialUnlocked -> ReadBannersResult(
+                    AccessLevel.Empty -> ReadNotesResult(accessLevel, emptySet())
+                    AccessLevel.ConfidentialLocked -> ReadNotesResult(accessLevel, emptySet())
+                    is AccessLevel.ConfidentialUnlocked -> ReadNotesResult(
                         accessLevel,
                         (1L..10).map {
-                            Banner.Basic(it, PlainDocument("Banner$it".toCharArray()))
+                            Note.Basic(it, PlainDocument("Banner$it".toCharArray()))
                         }.toSet()
                     )
                 }
@@ -66,7 +66,7 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
             }
             is BrowseNotes.Browsing -> {
                 subBoxContext.clear()
-                val banners = browseNotes.banners.toList()
+                val banners = browseNotes.notes.toList()
                 if (banners.isEmpty()) {
                     val backFill = fillBox(surfaceSwatch.fillColor)
                     val addButton = textButtonBox(
@@ -80,7 +80,7 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                     val sideOver = columnBox(
                         3 to titleBox("CONFIDENTIAL"),
                         -1 to listRow(
-                            itemLabels = banners.map { (it as Banner.Basic).plainDoc.toCharSequence().toString() },
+                            itemLabels = banners.map { it.plainDoc.toCharSequence().toString() },
                             bodyBox = bodyBox,
                             swatch = sideSwatch,
                             onActivate = { i -> browseNotes.viewNote(banners[i].noteId) }
