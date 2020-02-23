@@ -75,13 +75,44 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                     ).maxWidth(10).maxHeight(1)
                     boxScreen.setBox(addButton.before(backFill))
                 } else {
-                    val bodyBox = messageBox("All Hidden", surfaceSwatch)
-                    val sideSwatch = backgroundSwatch
+                    val editButton = textButtonBox(
+                        label = "Edit",
+                        isEnabled = { browseNotes.selectedNote != null },
+                        onPress = {}
+                    )
+                    val topBarOverlay = gapBox().packRight(6, editButton.maxHeight(1)).padX(2)
+                    val topBarUnderlay = fillBox(surfaceSwatch.fillColor)
+                    val topBar = topBarOverlay.before(topBarUnderlay)
+                    val bodyBox =
+                        (browseNotes.selectedNote?.let { noteId ->
+                            val note = browseNotes.notes.first { it.noteId == noteId }
+                            val title = labelBox(
+                                note.plainDoc.titleParagraph?.toCharSequence() ?: "Untitled",
+                                backgroundSwatch.strokeColor, Snap.LEFT
+                            ).maxHeight(1, Snap.TOP)
+                            val body = labelBox(
+                                text = note.plainDoc.bodyParagraph?.toCharSequence() ?: "",
+                                textColor = backgroundSwatch.strokeColor,
+                                snap = Snap.LEFT
+                            )
+                            val overlay = columnBox(
+                                1 to title,
+                                1 to gapBox(),
+                                1 to body
+                            )
+                            val underlay = fillBox(backgroundSwatch.fillColor)
+                            overlay
+                                .pad(2, 1)
+                                .before(underlay)
+
+                        } ?: messageBox("Pnotes", backgroundSwatch))
+                            .packTop(3, topBar)
+
+                    val sideSwatch = primaryDarkSwatch
                     val sideOver = columnBox(
                         3 to titleBox("CONFIDENTIAL"),
                         -1 to listRow(
                             itemLabels = banners.map { it.plainDoc.toCharSequence().toString() },
-                            bodyBox = bodyBox,
                             swatch = sideSwatch,
                             onActivate = { i -> browseNotes.viewNote(banners[i].noteId) }
                         )
@@ -91,9 +122,6 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                     boxScreen.setBox(bodyBox.packLeft(20, sideBox))
                 }
             }
-            is BrowseNotes.AwaitingDetails -> subBoxContext.subProject(browseNotes.substory.name) {
-                projectNoteDetails(browseNotes.substory)
-            }
             else -> boxScreen.setBox(messageBox(browseNotes.javaClass.simpleName, backgroundSwatch))
         }
     }
@@ -101,14 +129,12 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
 
 private fun BoxContext.listRow(
     itemLabels: List<String>,
-    bodyBox: Box<String>,
     swatch: ColorSwatch,
     onActivate: (Int) -> Unit
 ): Box<*> {
     val listSwatch = ListSwatch(swatch, primaryLightSwatch)
     return listBox(itemLabels, listSwatch) { i, box ->
         box.update(ListMotion.Activate)
-        bodyBox.update("${i + 1} Revealed")
         onActivate(i)
     }
 }

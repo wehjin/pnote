@@ -42,18 +42,13 @@ sealed class BrowseNotes(appScope: AppScope) : AppScope by appScope {
         appScope: AppScope,
         override val story: Story2<BrowseNotes>,
         val password: Password,
-        val notes: Set<Note.Basic>
-    ) : BrowseNotes(appScope)
-
-    class AwaitingDetails(
-        appScope: AppScope,
-        override val story: Story2<BrowseNotes>,
-        val substory: Story<NoteDetails>
+        val notes: Set<Note.Basic>,
+        val selectedNote: Long?
     ) : BrowseNotes(appScope)
 }
 
 private fun AppScope.initBrowseNotes(story: Story2<BrowseNotes>): BrowseNotes {
-    return noteBag.readNotes().let { (accessLevel, banners) ->
+    return noteBag.readNotes().let { (accessLevel, notes) ->
         when (accessLevel) {
             Empty -> {
                 val substory = importPasswordStory().apply {
@@ -76,7 +71,7 @@ private fun AppScope.initBrowseNotes(story: Story2<BrowseNotes>): BrowseNotes {
                 }
                 Unlocking(this, story, substory)
             }
-            is ConfidentialUnlocked -> Browsing(this, story, accessLevel.password, banners)
+            is ConfidentialUnlocked -> Browsing(this, story, accessLevel.password, notes, null)
         }
     }
 }
@@ -88,15 +83,9 @@ fun Browsing.addNote(title: String) {
 }
 
 fun Browsing.viewNote(noteId: Long) {
-    val banner = notes.firstOrNull { it.noteId == noteId }
-    val next = if (banner == null) this else {
-        val substory = noteDetailsStory(password, noteId, banner.plainDoc).apply {
-            onEnding {
-                val nextVision = initBrowseNotes(story)
-                story.update(nextVision)
-            }
-        }
-        AwaitingDetails(this, story, substory)
+    val next = when (notes.firstOrNull { it.noteId == noteId }) {
+        null -> this
+        else -> Browsing(this, story, password, notes, noteId)
     }
     story.update(next)
 }

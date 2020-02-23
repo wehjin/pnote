@@ -31,7 +31,6 @@ internal class BrowseNotesKtTest {
             override fun readNote(password: Password, noteId: Long): Note = error("not implemented")
             override fun updateNote(password: Password, note: Note) = error("not implemented")
             override fun deleteNote(noteId: Long, password: Password): Unit = error("not implemented")
-
             override fun readNotes(): ReadNotesResult = when (val accessLevel = cryptor.accessLevel) {
                 Empty -> ReadNotesResult(accessLevel, emptySet())
                 ConfidentialLocked -> ReadNotesResult(accessLevel, emptySet())

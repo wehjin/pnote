@@ -29,15 +29,26 @@ class PlainDocument(chars: CharArray) : Closeable {
         data class Columns(val cols: Int) : LineLength()
     }
 
-    private val paragraphs: List<Paragraph> by lazy {
+    val paragraphs: List<Paragraph> by lazy {
         charBuffer.toHardBreaks().fold(emptyList<Paragraph>()) { results, breakIndex ->
             val start = if (results.isEmpty()) 0 else results.last().end + 1
-            val nextResult = Paragraph(start, breakIndex)
+            val nextResult = Paragraph(this, start, breakIndex)
             results + nextResult
         }
     }
 
-    data class Paragraph(val start: Int, val end: Int)
+    val titleParagraph: Paragraph? by lazy { paragraphs.firstOrNull() }
+
+    val bodyParagraph: Paragraph? by lazy {
+        titleParagraph?.let { paragraphs.drop(1).firstOrNull() }
+    }
+
+    data class Paragraph(
+        val plainDoc: PlainDocument,
+        val start: Int, val end: Int
+    ) {
+        fun toCharSequence(): CharSequence = plainDoc.toCharSequence(start, end)
+    }
 
     fun toCharSequence(): CharSequence {
         return charBuffer
