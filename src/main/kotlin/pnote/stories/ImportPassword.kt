@@ -31,7 +31,7 @@ private sealed class ImportConfidentialAction {
     data class SetPassword(val passwordLine: String, val checkLine: String) : ImportConfidentialAction()
 }
 
-fun AppScope.importPassword() = matchingStory<ImportPasswordVision>(
+fun AppScope.importPasswordStory() = matchingStory<ImportPasswordVision>(
     name = "ImportPassword",
     toFirstVision = { GetPassword(offer, "", "", null) },
     isLastVision = { vision -> vision is FinishedGetPassword },

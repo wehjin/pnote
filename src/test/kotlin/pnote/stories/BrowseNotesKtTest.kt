@@ -47,7 +47,7 @@ internal class BrowseNotesKtTest {
         runBlocking {
             val importing = story.scan(500) { it as? Importing }
 
-            story.offer(importing.cancel())
+            importing.cancel()
             story.scan(500) { it as? Finished }
         }
     }
@@ -59,7 +59,7 @@ internal class BrowseNotesKtTest {
         runBlocking {
             val unlocking = story.scan(500) { it as? Unlocking }
 
-            story.offer(unlocking.cancel())
+            unlocking.cancel()
             story.scan(500) { it as? Finished }
         }
     }
@@ -72,20 +72,20 @@ internal class BrowseNotesKtTest {
             val browsing = story.scan(500) { it as? Browsing }
             assertEquals(bannerSet, browsing.banners)
 
-            story.offer(browsing.cancel())
+            browsing.cancel()
             story.scan(500) { it as? Finished }
         }
     }
 
     @Test
-    internal fun `offering an add-note action from browsing adds a note to the bag`() {
+    internal fun `adding a note from browsing adds a note to the bag`() {
         appScope.cryptor = memCryptor(password("1234"), password("1234"))
         val story = appScope.browseNotesStory()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }
             assertEquals(bannerSet, browsing.banners)
 
-            story.offer(browsing.addNote("Adios"))
+            browsing.addNote("Adios")
             val browsing2 = story.scan(500) { vision ->
                 (vision as? Browsing)?.let { if (it.banners.size > 1) it else null }
             }

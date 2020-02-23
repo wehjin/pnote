@@ -1,85 +1,103 @@
 package pnote.stories
 
 import com.rubyhuntersky.story.core.Story
-import com.rubyhuntersky.story.core.matchingStory
-import com.rubyhuntersky.story.core.scopes.StoryInitScope
-import com.rubyhuntersky.story.core.scopes.offerWhenStoryEnds
-import com.rubyhuntersky.story.core.scopes.on
-import com.rubyhuntersky.story.core.scopes.onAction
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes.*
-import pnote.stories.BrowseNotesAction.*
 import pnote.tools.AccessLevel.*
 import pnote.tools.Banner
 import pnote.tools.Note
 import pnote.tools.Password
 import pnote.tools.security.plain.PlainDocument
 
-fun AppScope.browseNotesStory(): Story<BrowseNotes> = matchingStory(
-    name = "BrowseNotes",
-    isLastVision = { it is Finished },
-    toFirstVision = { init(this) },
-    updateRules = {
-        onAction<Cancel, BrowseNotes> {
-            Finished
-        }
-        onAction<Reload, BrowseNotes> {
-            init(this)
-        }
-        on<AddNote, BrowseNotes, Browsing> {
-            val note = Note.Basic(plainDoc = PlainDocument(action.title.toCharArray()))
-            noteBag.createNote(vision.password, note)
-            init(this)
-        }
-        on<ViewNote, BrowseNotes, Browsing> {
-            val banner = vision.banners.firstOrNull { it.noteId == action.noteId } as? Banner.Basic
-            if (banner == null) vision
-            else {
-                val substory = noteDetailsStory(vision.password, action.noteId, banner.plainDoc)
-                whenSubstoryEnds(substory) { offer(Reload) }
-                AwaitingDetails(substory)
-            }
-        }
-    }
-)
 
-private fun AppScope.init(storyInitScope: StoryInitScope<BrowseNotes>): BrowseNotes =
-    noteBag.readBanners().let { (accessLevel, banners) ->
-        when (accessLevel) {
-            Empty -> {
-                val substory = importPassword().also { storyInitScope.offerWhenStoryEnds(it) { Reload } }
-                Importing(substory)
-            }
-            ConfidentialLocked -> {
-                val substory = unlockIdentityStory().also {
-                    storyInitScope.offerWhenStoryEnds(it) {
-                        val wasCancelled = (ending as UnlockIdentity.Done).wasCancelled
-                        if (wasCancelled) Cancel else Reload
-                    }
-                }
-                Unlocking(substory)
-            }
-            is ConfidentialUnlocked -> Browsing(accessLevel.password, banners)
-        }
-    }
-
-sealed class BrowseNotes() {
-    class Importing(val substory: Story<ImportPasswordVision>) : BrowseNotes()
-    data class Unlocking(val substory: Story2<UnlockIdentity>) : BrowseNotes()
-    data class AwaitingDetails(val substory: Story<NoteDetails>) : BrowseNotes()
-    object Finished : BrowseNotes()
-    class Browsing(val password: Password, val banners: Set<Banner>) : BrowseNotes() {
-        fun addNote(title: String): Any = AddNote(title)
-        fun viewNote(noteId: Long): Any = ViewNote(noteId)
-    }
-
-    fun cancel(): Any = Cancel
+fun AppScope.browseNotesStory(): Story2<BrowseNotes> {
+    return story2(first = ::initBrowseNotes, last = { it is Finished })
 }
 
-private sealed class BrowseNotesAction {
+sealed class BrowseNotes(appScope: AppScope) : AppScope by appScope {
 
-    object Cancel : BrowseNotesAction()
-    object Reload : BrowseNotesAction()
-    data class AddNote(val title: String) : BrowseNotesAction()
-    data class ViewNote(val noteId: Long) : BrowseNotesAction()
+    fun cancel() {
+        story.update(Finished(this, story))
+    }
+
+    abstract val story: Story2<BrowseNotes>
+
+    class Finished(
+        appScope: AppScope,
+        override val story: Story2<BrowseNotes>
+    ) : BrowseNotes(appScope)
+
+    class Importing(
+        appScope: AppScope,
+        override val story: Story2<BrowseNotes>,
+        val substory: Story<ImportPasswordVision>
+    ) : BrowseNotes(appScope)
+
+    class Unlocking(
+        appScope: AppScope,
+        override val story: Story2<BrowseNotes>,
+        val substory: Story2<UnlockIdentity>
+    ) : BrowseNotes(appScope)
+
+    class Browsing(
+        appScope: AppScope,
+        override val story: Story2<BrowseNotes>,
+        val password: Password,
+        val banners: Set<Banner>
+    ) : BrowseNotes(appScope)
+
+    class AwaitingDetails(
+        appScope: AppScope,
+        override val story: Story2<BrowseNotes>,
+        val substory: Story<NoteDetails>
+    ) : BrowseNotes(appScope)
+}
+
+private fun AppScope.initBrowseNotes(story: Story2<BrowseNotes>): BrowseNotes {
+    return noteBag.readBanners().let { (accessLevel, banners) ->
+        when (accessLevel) {
+            Empty -> {
+                val substory = importPasswordStory().apply {
+                    onEnding {
+                        val nextVision = initBrowseNotes(story)
+                        story.update(nextVision)
+                    }
+                }
+                Importing(this, story, substory)
+            }
+            ConfidentialLocked -> {
+                val substory = unlockIdentityStory().apply {
+                    onEnding { ending ->
+                        val nextVision = when ((ending as UnlockIdentity.Done).wasCancelled) {
+                            true -> Finished(this@initBrowseNotes, story)
+                            else -> initBrowseNotes(story)
+                        }
+                        story.update(nextVision)
+                    }
+                }
+                Unlocking(this, story, substory)
+            }
+            is ConfidentialUnlocked -> Browsing(this, story, accessLevel.password, banners)
+        }
+    }
+}
+
+fun Browsing.addNote(title: String) {
+    val note = Note.Basic(plainDoc = PlainDocument(title.toCharArray()))
+    noteBag.createNote(password, note)
+    story.update(initBrowseNotes(story))
+}
+
+fun Browsing.viewNote(noteId: Long) {
+    val banner = banners.firstOrNull { it.noteId == noteId } as? Banner.Basic
+    val next = if (banner == null) this else {
+        val substory = noteDetailsStory(password, noteId, banner.plainDoc).apply {
+            onEnding {
+                val nextVision = initBrowseNotes(story)
+                story.update(nextVision)
+            }
+        }
+        AwaitingDetails(this, story, substory)
+    }
+    story.update(next)
 }

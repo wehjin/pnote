@@ -18,7 +18,7 @@ class ImportPasswordTest : AppScope {
     override val logTag: String = "ImportPasswordTest"
     override val cryptor: Cryptor = memCryptor()
     override val noteBag: NoteBag get() = error("not implemented")
-    private val story = importPassword()
+    private val story = importPasswordStory()
 
     @Test
     internal fun `story starts with empty fields`() {

@@ -2,7 +2,6 @@
 
 package pnote.projections
 
-import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -11,7 +10,9 @@ import pnote.mainBoxContext
 import pnote.projections.sandbox.*
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes
+import pnote.stories.Story2
 import pnote.stories.browseNotesStory
+import pnote.stories.viewNote
 import pnote.tools.*
 import pnote.tools.security.plain.PlainDocument
 
@@ -47,14 +48,13 @@ fun main() {
     }
     val story = app.browseNotesStory()
     val boxContext = mainBoxContext()
-    val projection = boxContext.projectBrowseNotes(story)
     runBlocking {
-        projection.join()
+        boxContext.projectBrowseNotes(story).join()
         boxContext.boxScreen.close()
     }
 }
 
-fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>): Job = GlobalScope.launch {
+fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope.launch {
     val subBoxContext = SubBoxContext()
     for (browseNotes in story.subscribe()) {
         println("PROJECT: $browseNotes")
@@ -83,7 +83,7 @@ fun BoxContext.projectBrowseNotes(story: Story<BrowseNotes>): Job = GlobalScope.
                             itemLabels = banners.map { (it as Banner.Basic).plainDoc.toCharSequence().toString() },
                             bodyBox = bodyBox,
                             swatch = sideSwatch,
-                            onActivate = { i -> story.offer(browseNotes.viewNote(banners[i].noteId)) }
+                            onActivate = { i -> browseNotes.viewNote(banners[i].noteId) }
                         )
                     )
                     val sideUnder = fillBox(sideSwatch.fillColor)
