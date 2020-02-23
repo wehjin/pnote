@@ -55,6 +55,7 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
     val subBoxContext = SubBoxContext()
     for (browseNotes in story.subscribe()) {
         println("PROJECT: $browseNotes")
+        val bodySwatch = surfaceSwatch
         when (browseNotes) {
             is BrowseNotes.Unlocking -> {
                 subBoxContext.subProject(browseNotes.substory.name) {
@@ -72,24 +73,26 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                     ).maxWidth(10).maxHeight(1)
                     boxScreen.setBox(addButton.before(backFill))
                 } else {
+                    val topBarSwatch = primarySwatch
                     val editButton = textButtonBox(
                         label = "Edit",
+                        swatch = topBarSwatch.flip(),
                         isEnabled = { browseNotes.selectedNote != null },
                         onPress = { browseNotes.editNote(browseNotes.selectedNote!!) }
                     )
                     val topBarOverlay = gapBox().packRight(6, editButton.maxHeight(1)).padX(2)
-                    val topBarUnderlay = fillBox(surfaceSwatch.fillColor)
+                    val topBarUnderlay = fillBox(topBarSwatch.fillColor)
                     val topBar = topBarOverlay.before(topBarUnderlay)
                     val bodyBox =
                         (browseNotes.selectedNote?.let { noteId ->
                             val note = browseNotes.notes.first { it.noteId == noteId }
                             val title = labelBox(
                                 note.plainDoc.titleParagraph?.toCharSequence() ?: "Untitled",
-                                backgroundSwatch.strokeColor, Snap.LEFT
+                                bodySwatch.strokeColor, Snap.LEFT
                             ).maxHeight(1, Snap.TOP)
                             val body = labelBox(
                                 text = note.plainDoc.bodyParagraph?.toCharSequence() ?: "",
-                                textColor = backgroundSwatch.strokeColor,
+                                textColor = bodySwatch.strokeColor,
                                 snap = Snap.LEFT
                             )
                             val overlay = columnBox(
@@ -97,17 +100,18 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                                 1 to gapBox(),
                                 1 to body
                             )
-                            val underlay = fillBox(backgroundSwatch.fillColor)
+                            val underlay = fillBox(bodySwatch.fillColor)
                             overlay
-                                .pad(2, 1)
+                                .pad(6, 1)
                                 .before(underlay)
 
-                        } ?: messageBox("Pnotes", backgroundSwatch))
+                        } ?: messageBox("Pnotes", bodySwatch))
                             .packTop(3, topBar)
 
-                    val sideSwatch = primaryDarkSwatch
+                    val sideSwatch = backgroundSwatch
                     val sideOver = columnBox(
                         3 to titleBox("CONFIDENTIAL"),
+                        1 to glyphBox('_', sideSwatch.disabledColor),
                         -1 to listRow(
                             itemLabels = notes.map { it.title },
                             swatch = sideSwatch,
@@ -125,7 +129,7 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                     SubProjection(subProjectionName, projectEditNote(browseNotes.substory))
                 }
             }
-            else -> boxScreen.setBox(messageBox(browseNotes.javaClass.simpleName, backgroundSwatch))
+            else -> boxScreen.setBox(messageBox(browseNotes.javaClass.simpleName, bodySwatch))
         }
     }
 }
@@ -143,11 +147,11 @@ private fun BoxContext.listRow(
 }
 
 private fun BoxContext.titleBox(title: String): Box<Void> {
-    val swatch = primarySwatch
+    val swatch = backgroundSwatch
     return columnBox(
         1 to gapBox(),
-        1 to labelBox(title, swatch.strokeColor, Snap.LEFT).padX(2),
-        1 to glyphBox('_', swatch.disabledColor)
+        1 to labelBox(title, primaryLightSwatch.fillColor, Snap.LEFT).padX(2),
+        1 to gapBox()
     ).before(fillBox(swatch.fillColor))
 }
 

@@ -14,6 +14,7 @@ fun main() {
 class BoxScreen : BoxInitScope, Closeable {
     private val renderChannel = Channel<RenderAction>(10)
     private var renderBox: Box<*>? = null
+    private val activeFocus = ActiveFocus(renderChannel)
 
     override fun refreshScreen() {
         renderChannel.offer(RenderAction.Refresh)
@@ -24,7 +25,13 @@ class BoxScreen : BoxInitScope, Closeable {
     }
 
     override fun setBox(box: Box<*>) {
+        activeFocus.focusId = null
         renderBox = box
+        renderChannel.offer(RenderAction.Refresh)
+    }
+
+    override fun clearFocus() {
+        activeFocus.focusId = null
         renderChannel.offer(RenderAction.Refresh)
     }
 
@@ -41,7 +48,6 @@ class BoxScreen : BoxInitScope, Closeable {
                     }
                 }
             }
-            val activeFocus = ActiveFocus(renderChannel)
             actions@ for (action in renderChannel) {
                 when (action) {
                     RenderAction.Refresh -> renderBox?.let { updateScreen(screen, it, activeFocus, renderChannel) }

@@ -4,4 +4,5 @@ interface BoxInitScope {
     fun refreshScreen()
     fun endProjection()
     fun setBox(box: Box<*>)
+    fun clearFocus()
 }

@@ -111,10 +111,15 @@ private fun BoxContext.contentBox(
     var nextTitle: List<Char>? = null
     var nextBody: List<Char>? = null
 
-    val titleBox = lineEditBox("Title", titleLine, primaryDarkSwatch, { null }, {
-        nextTitle = it
-        onChange(Pair(it, nextBody ?: bodyLine?.toList() ?: emptyList()))
-    })
+    val titleBox = lineEditBox(
+        label = "Title",
+        line = titleLine,
+        swatch = backgroundSwatch,
+        toExtra = { null },
+        onChange = {
+            nextTitle = it
+            onChange(Pair(it, nextBody ?: bodyLine?.toList() ?: emptyList()))
+        })
     val titleRow = titleBox.maxHeight(3)
 
     val bodyBox = editBox(bodyLine) {
@@ -189,7 +194,7 @@ fun BoxContext.lineEditBox(
         focus = {
             setFocusable(
                 Focusable(
-                    id, edge.bounds, keyReader(id) { stroke ->
+                    id, edge.bounds, FocusRole.Edit, keyReader(id) { stroke ->
                         when (stroke.keyType) {
                             KeyType.Character -> {
                                 stroke.character.also { char ->
@@ -258,7 +263,7 @@ fun BoxContext.editBox(body: CharSequence?, onChange: (List<Char>) -> Unit): Box
             edge.bounds.z
         },
         focus = {
-            setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+            setFocusable(Focusable(id, edge.bounds, FocusRole.Edit, keyReader(id) { keyStroke ->
                 when (keyStroke.keyType) {
                     KeyType.Character -> {
                         val char = keyStroke.character

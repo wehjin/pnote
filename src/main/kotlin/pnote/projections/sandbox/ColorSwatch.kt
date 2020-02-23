@@ -9,6 +9,8 @@ data class ColorSwatch(val strokeColor: TextColor, val fillColor: TextColor) {
     val disabledColor: TextColor by lazy { blend(.38f) }
 }
 
+fun ColorSwatch.flip(): ColorSwatch = ColorSwatch(fillColor, strokeColor)
+
 fun ColorSwatch.blend(strength: Float): TextColor {
     fun Color.toList() = listOf(red, green, blue)
     val fillRgb = fillColor.toColor().toList()
@@ -17,7 +19,7 @@ fun ColorSwatch.blend(strength: Float): TextColor {
     val blend = rgb.map { (fill, stroke) ->
         val delta = stroke - fill
         val move = (strength * delta).toInt()
-        fill + move
+        (fill + move) and 0xff
     }
     return TextColor.Indexed.fromRGB(blend[0], blend[1], blend[2])
 }

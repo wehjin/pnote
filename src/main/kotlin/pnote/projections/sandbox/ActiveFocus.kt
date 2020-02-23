@@ -100,7 +100,9 @@ class ActiveFocus(private val channel: SendChannel<RenderAction>) {
 
     private fun selectNewFocus(blurId: Long?, forward: Boolean): Long? {
         return if (blurId == null) {
-            focusables.keys.firstOrNull()
+            val (edits, others) = focusables.values.partition { it.role == FocusRole.Edit }
+            val search = if (edits.isNotEmpty()) edits else others
+            search.minBy { it.bounds.top }?.focusableId
         } else {
             val sorted = focusables.values.sortedBy { it.bounds.top }
             val oldInSorted = sorted.find { it.focusableId == blurId }

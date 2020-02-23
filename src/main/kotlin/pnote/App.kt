@@ -51,13 +51,13 @@ fun mainBoxContext(block: (BoxContext.() -> Unit)? = null): BoxContext {
         override val backgroundSwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x12, 0x12, 0x12))
         override val primarySwatch: ColorSwatch =
-            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x34, 0x49, 0x55))
+            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x5c, 0x6b, 0xc0))
         override val primaryDarkSwatch: ColorSwatch =
-            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x23, 0x2f, 0x34))
+            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x26, 0x41, 0x8f))
         override val primaryLightSwatch: ColorSwatch =
-            ColorSwatch(TextColor.ANSI.WHITE, TextColor.Indexed.fromRGB(0x4a, 0x65, 0x72))
+            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0x8e, 0x99, 0xf3))
         override val secondarySwatch: ColorSwatch =
-            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xf9, 0xaa, 0x33))
+            ColorSwatch(TextColor.ANSI.BLACK, TextColor.Indexed.fromRGB(0xc5, 0xe1, 0xa5))
         override val errorSwatch: ColorSwatch =
             ColorSwatch(TextColor.ANSI.BLACK, TextColor.ANSI.RED)
     }

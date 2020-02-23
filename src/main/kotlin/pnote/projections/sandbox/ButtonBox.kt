@@ -21,11 +21,11 @@ inline fun <reified T> Set<ButtonBoxOption>.get(): T? {
 
 fun BoxContext.textButtonBox(
     label: String,
+    swatch: ColorSwatch = secondarySwatch,
     isEnabled: () -> Boolean = { true },
     onPress: (() -> Unit)? = null
 ): Box<Void> {
     val id = randomId()
-    val swatch = secondarySwatch
     val enabledGlyphColor = swatch.fillColor
     val disabledGlyphColor = swatch.highColor
     val focusFillColor = swatch.highColor
@@ -59,7 +59,7 @@ fun BoxContext.textButtonBox(
             }
             if (isEnabled()) {
                 onPress?.also { onPress ->
-                    setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+                    setFocusable(Focusable(id, edge.bounds, FocusRole.Submit, keyReader(id) { keyStroke ->
                         if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
                             GlobalScope.launch {
                                 pressed = true
@@ -105,7 +105,7 @@ fun BoxContext.buttonBox(text: String, options: Set<ButtonBoxOption> = emptySet(
                 readSpark(sparkReader.spark, sparkReader.block)
             }
             pressBlock?.also {
-                setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+                setFocusable(Focusable(id, edge.bounds, FocusRole.Submit, keyReader(id) { keyStroke ->
                     if (keyStroke.character == ' ' || keyStroke.keyType == KeyType.Enter) {
                         GlobalScope.launch {
                             pressed = true

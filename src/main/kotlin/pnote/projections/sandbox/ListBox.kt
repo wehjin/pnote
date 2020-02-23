@@ -35,7 +35,7 @@ fun BoxContext.listBox(
     val focusId = randomId()
     var focusIndex = 0
     val list = passiveList(items, null, swatch) { focusIndex = it }
-    return list.focusable(focusId) {
+    return list.focusable(focusId, FocusRole.Edit) {
         val listChanged = when (keyStroke.keyType) {
             KeyType.ArrowDown -> true.also { list.update(ListMotion.Down) }
             KeyType.ArrowUp -> true.also { list.update(ListMotion.Up) }

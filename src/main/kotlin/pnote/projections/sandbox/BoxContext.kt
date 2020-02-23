@@ -69,7 +69,7 @@ fun BoxContext.inputBox(onInput: ((String) -> Unit)? = null): Box<Void> {
             edge.bounds.z
         },
         focus = {
-            setFocusable(Focusable(id, edge.bounds, keyReader(id) { keyStroke ->
+            setFocusable(Focusable(id, edge.bounds, FocusRole.Edit, keyReader(id) { keyStroke ->
                 val changed = when (keyStroke.keyType) {
                     KeyType.Character -> content + keyStroke.character.toString()
                     KeyType.Backspace, KeyType.Delete -> when {
