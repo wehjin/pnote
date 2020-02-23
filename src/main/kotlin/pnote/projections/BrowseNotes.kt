@@ -9,10 +9,7 @@ import kotlinx.coroutines.runBlocking
 import pnote.mainBoxContext
 import pnote.projections.sandbox.*
 import pnote.scopes.AppScope
-import pnote.stories.BrowseNotes
-import pnote.stories.Story2
-import pnote.stories.browseNotesStory
-import pnote.stories.viewNote
+import pnote.stories.*
 import pnote.tools.*
 import pnote.tools.security.plain.PlainDocument
 
@@ -66,8 +63,8 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
             }
             is BrowseNotes.Browsing -> {
                 subBoxContext.clear()
-                val banners = browseNotes.notes.toList()
-                if (banners.isEmpty()) {
+                val notes = browseNotes.notes.toList()
+                if (notes.isEmpty()) {
                     val backFill = fillBox(surfaceSwatch.fillColor)
                     val addButton = textButtonBox(
                         label = "Add Note",
@@ -78,7 +75,7 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                     val editButton = textButtonBox(
                         label = "Edit",
                         isEnabled = { browseNotes.selectedNote != null },
-                        onPress = {}
+                        onPress = { browseNotes.editNote(browseNotes.selectedNote!!) }
                     )
                     val topBarOverlay = gapBox().packRight(6, editButton.maxHeight(1)).padX(2)
                     val topBarUnderlay = fillBox(surfaceSwatch.fillColor)
@@ -112,14 +109,20 @@ fun BoxContext.projectBrowseNotes(story: Story2<BrowseNotes>): Job = GlobalScope
                     val sideOver = columnBox(
                         3 to titleBox("CONFIDENTIAL"),
                         -1 to listRow(
-                            itemLabels = banners.map { it.plainDoc.toCharSequence().toString() },
+                            itemLabels = notes.map { it.title },
                             swatch = sideSwatch,
-                            onActivate = { i -> browseNotes.viewNote(banners[i].noteId) }
+                            onActivate = { i -> browseNotes.viewNote(notes[i].noteId) }
                         )
                     )
                     val sideUnder = fillBox(sideSwatch.fillColor)
                     val sideBox = sideOver.before(sideUnder)
                     boxScreen.setBox(bodyBox.packLeft(20, sideBox))
+                }
+            }
+            is BrowseNotes.Editing -> {
+                val subProjectionName = browseNotes.substory.name
+                subBoxContext.subProject(subProjectionName) {
+                    SubProjection(subProjectionName, projectEditNote(browseNotes.substory))
                 }
             }
             else -> boxScreen.setBox(messageBox(browseNotes.javaClass.simpleName, backgroundSwatch))

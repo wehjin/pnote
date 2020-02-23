@@ -9,5 +9,9 @@ sealed class Note {
     data class Basic(
         override val noteId: Long = randomId(),
         val plainDoc: PlainDocument
-    ) : Note()
+    ) : Note() {
+        val title: String by lazy {
+            plainDoc.titleParagraph?.toCharSequence()?.toString() ?: "Untitled"
+        }
+    }
 }

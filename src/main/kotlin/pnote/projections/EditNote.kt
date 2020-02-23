@@ -3,6 +3,7 @@ package pnote.projections
 import com.googlecode.lanterna.input.KeyType
 import com.rubyhuntersky.story.core.Story
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pnote.mainBoxContext
@@ -36,20 +37,20 @@ fun main() {
         }
         val editNoteStory = app.editNoteStory(password, initNote.noteId)
         val boxContext = mainBoxContext()
-        val editNoteProjection = boxContext.projectEditNote(editNoteStory)
-        editNoteProjection.job.join().also { boxContext.boxScreen.close() }
+        val editJob = boxContext.projectEditNote(editNoteStory)
+        editJob.join().also { boxContext.boxScreen.close() }
     }
 }
 
-fun BoxContext.projectEditNote(story: Story<EditNote>): SubProjection {
-    return SubProjection(story.name, GlobalScope.launch {
+fun BoxContext.projectEditNote(story: Story<EditNote>): Job {
+    return GlobalScope.launch {
         visionLoop@ for (vision in story.subscribe()) {
             when (vision) {
                 EditNote.FinishedEditing -> break@visionLoop
                 is EditNote.Editing -> projectEditing(vision, story)
             }
         }
-    })
+    }
 }
 
 private fun BoxContext.projectEditing(vision: EditNote.Editing, story: Story<EditNote>) {
@@ -90,7 +91,7 @@ private fun BoxContext.topBarBox(onBack: () -> Unit, onSave: () -> Unit): Box<Vo
     )
     val saveButton = buttonBox("SAVE", styleOptions + PressReader { onSave() })
     val backButton = buttonBox(
-        text = "<<",
+        text = "<-",
         options = styleOptions + SparkReader(Spark.Back) { onBack() } + PressReader { onBack() }
     )
     val content = title.packRight(8, saveButton).packLeft(6, backButton)
