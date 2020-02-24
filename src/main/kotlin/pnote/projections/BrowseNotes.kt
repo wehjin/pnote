@@ -14,10 +14,9 @@ import pnote.tools.*
 import pnote.tools.security.plain.PlainDocument
 
 fun main() {
-    val secret = password("abc")
     val app = object : AppScope {
         override val logTag: String = "BrowseNotes2ProjectionTest"
-        override val cryptor: Cryptor = memCryptor(secret, null)
+        override val cryptor: Cryptor = memCryptor()
         override val noteBag: NoteBag = object : NoteBag {
             override fun createNote(password: Password, note: Note): Long = error("Unused")
             override fun readNote(password: Password, noteId: Long): Note {
@@ -31,7 +30,6 @@ fun main() {
             override fun deleteNote(noteId: Long, password: Password): Unit = error("not implemented")
             override fun readNotes(): ReadNotesResult {
                 return when (val accessLevel = cryptor.accessLevel) {
-                    AccessLevel.Empty -> ReadNotesResult(accessLevel, emptySet())
                     AccessLevel.ConfidentialLocked -> ReadNotesResult(accessLevel, emptySet())
                     is AccessLevel.ConfidentialUnlocked -> ReadNotesResult(
                         accessLevel,

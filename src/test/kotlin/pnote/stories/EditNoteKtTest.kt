@@ -20,7 +20,7 @@ internal class EditNoteKtTest {
     private val app =
         object : AppScope {
             override val logTag: String = "edit-note-story-test"
-            override val cryptor: Cryptor = memCryptor(password, password)
+            override val cryptor: Cryptor = memCryptor(password)
             override val noteBag: NoteBag = FileNoteBag(createTempDir(logTag), cryptor)
         }.apply {
             noteBag.updateNote(password, initNote)

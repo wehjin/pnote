@@ -11,14 +11,13 @@ import pnote.stories.*
 import pnote.tools.Cryptor
 import pnote.tools.NoteBag
 import pnote.tools.memCryptor
-import pnote.tools.password
 
 fun main() {
     val app = object : AppScope {
         override val logTag: String = "project-unlock-identity-demo"
         override val noteBag: NoteBag get() = error("not implemented")
         override val cryptor: Cryptor get() = memCryptor
-        private val memCryptor = memCryptor(password("abc"), null)
+        private val memCryptor = memCryptor(null)
     }
     val story = app.unlockIdentityStory()
     val boxProjector = mainBoxContext()

@@ -3,7 +3,8 @@ package pnote.stories
 import com.rubyhuntersky.story.core.Story
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes.*
-import pnote.tools.AccessLevel.*
+import pnote.tools.AccessLevel.ConfidentialLocked
+import pnote.tools.AccessLevel.ConfidentialUnlocked
 import pnote.tools.Note
 import pnote.tools.Password
 import pnote.tools.security.plain.PlainDocument
@@ -24,12 +25,6 @@ sealed class BrowseNotes(appScope: AppScope) : AppScope by appScope {
     class Finished(
         appScope: AppScope,
         override val story: Story2<BrowseNotes>
-    ) : BrowseNotes(appScope)
-
-    class Importing(
-        appScope: AppScope,
-        override val story: Story2<BrowseNotes>,
-        val substory: Story<ImportPasswordVision>
     ) : BrowseNotes(appScope)
 
     class Unlocking(
@@ -80,15 +75,6 @@ fun Browsing.viewNote(noteId: Long) {
 private fun AppScope.initBrowseNotes(story: Story2<BrowseNotes>): BrowseNotes {
     return noteBag.readNotes().let { (accessLevel, notes) ->
         when (accessLevel) {
-            Empty -> {
-                val substory = importPasswordStory().apply {
-                    onEnding {
-                        val nextVision = initBrowseNotes(story)
-                        story.update(nextVision)
-                    }
-                }
-                Importing(this, story, substory)
-            }
             ConfidentialLocked -> {
                 val substory = unlockIdentityStory().apply {
                     onEnding { ending ->

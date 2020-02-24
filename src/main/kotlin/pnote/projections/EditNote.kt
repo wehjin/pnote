@@ -27,7 +27,7 @@ fun main() {
             private val commandName = "pnotes"
             private val userName = "edit-note-projection"
             private val userDir = userDir(commandName, userName)
-            override val cryptor: Cryptor = memCryptor(password, password)
+            override val cryptor: Cryptor = memCryptor(password)
             override val noteBag: NoteBag = FileNoteBag(userDir, cryptor)
             override val logTag: String = "$commandName/$userName"
         }

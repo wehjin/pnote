@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Test
 import pnote.scopes.AppScope
 import pnote.stories.BrowseNotes.*
 import pnote.tools.*
-import pnote.tools.AccessLevel.*
+import pnote.tools.AccessLevel.ConfidentialLocked
+import pnote.tools.AccessLevel.ConfidentialUnlocked
 import pnote.tools.security.plain.PlainDocument
 import story.core.scan
 
@@ -32,7 +33,6 @@ internal class BrowseNotesKtTest {
             override fun updateNote(password: Password, note: Note) = error("not implemented")
             override fun deleteNote(noteId: Long, password: Password): Unit = error("not implemented")
             override fun readNotes(): ReadNotesResult = when (val accessLevel = cryptor.accessLevel) {
-                Empty -> ReadNotesResult(accessLevel, emptySet())
                 ConfidentialLocked -> ReadNotesResult(accessLevel, emptySet())
                 is ConfidentialUnlocked -> ReadNotesResult(accessLevel, noteSet)
             }
@@ -40,20 +40,8 @@ internal class BrowseNotesKtTest {
     }
 
     @Test
-    internal fun `empty cryptor starts story with importing`() {
-        appScope.cryptor = memCryptor(null)
-        val story = appScope.browseNotesStory()
-        runBlocking {
-            val importing = story.scan(500) { it as? Importing }
-
-            importing.cancel()
-            story.scan(500) { it as? Finished }
-        }
-    }
-
-    @Test
     internal fun `locked cryptor starts story with unlocking`() {
-        appScope.cryptor = memCryptor(password("1234"))
+        appScope.cryptor = memCryptor()
         val story = appScope.browseNotesStory()
         runBlocking {
             val unlocking = story.scan(500) { it as? Unlocking }
@@ -65,7 +53,7 @@ internal class BrowseNotesKtTest {
 
     @Test
     internal fun `unlocked cryptor starts story with browsing`() {
-        appScope.cryptor = memCryptor(password("1234"), password("1234"))
+        appScope.cryptor = memCryptor(password("1234"))
         val story = appScope.browseNotesStory()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }
@@ -78,7 +66,7 @@ internal class BrowseNotesKtTest {
 
     @Test
     internal fun `adding a note from browsing adds a note to the bag`() {
-        appScope.cryptor = memCryptor(password("1234"), password("1234"))
+        appScope.cryptor = memCryptor(password("1234"))
         val story = appScope.browseNotesStory()
         runBlocking {
             val browsing = story.scan(500) { it as? Browsing }

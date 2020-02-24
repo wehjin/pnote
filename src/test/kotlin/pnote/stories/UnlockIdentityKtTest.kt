@@ -19,7 +19,6 @@ internal class UnlockIdentityKtTest : AppScope {
     private var passwordResult: Password? = null
     override val cryptor: Cryptor = object : Cryptor {
         override val accessLevel: AccessLevel get() = error("not implemented")
-        override fun importConfidential(secret: Password) = error("not implemented")
         override fun unlockConfidential(password: Password) {
             passwordResult = password
         }
@@ -28,7 +27,7 @@ internal class UnlockIdentityKtTest : AppScope {
     private val story = unlockIdentityStory()
 
     @Test
-    internal fun `first vision is importing`() {
+    internal fun `story begins with unlocking`() {
         runBlocking {
             story.subscribe().receive() is UnlockIdentity.Unlocking
         }

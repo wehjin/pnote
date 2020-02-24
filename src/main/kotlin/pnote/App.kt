@@ -12,10 +12,7 @@ import pnote.projections.sandbox.ColorSwatch
 import pnote.projections.sandbox.lanternaBoxScreen
 import pnote.scopes.AppScope
 import pnote.stories.browseNotesStory
-import pnote.tools.Cryptor
-import pnote.tools.FileNoteBag
-import pnote.tools.NoteBag
-import pnote.tools.fileCryptor
+import pnote.tools.*
 import java.io.File
 
 fun userDir(commandName: String, userName: String): File {
@@ -26,7 +23,7 @@ fun userDir(commandName: String, userName: String): File {
 
 class App(commandName: String, userName: String) : AppScope {
     private val userDir = userDir(commandName, userName)
-    override val cryptor: Cryptor = fileCryptor(userDir)
+    override val cryptor: Cryptor = memCryptor()
     override val noteBag: NoteBag = FileNoteBag(userDir, cryptor)
     override val logTag: String = commandName
 }

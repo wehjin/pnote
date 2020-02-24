@@ -8,10 +8,7 @@ internal class FileNoteBagTest {
 
     private val dir = createTempDir("file-note-bag-test")
     private val secret = password("1234")
-    private val cryptor = fileCryptor(dir).apply {
-        importConfidential(secret)
-        unlockConfidential(secret)
-    }
+    private val cryptor = memCryptor().apply { unlockConfidential(secret) }
     private val bag = FileNoteBag(dir, cryptor)
 
     @Test

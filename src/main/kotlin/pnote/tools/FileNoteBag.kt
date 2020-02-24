@@ -38,10 +38,6 @@ class FileNoteBag(dir: File, private val cryptor: Cryptor) : NoteBag {
 
     override fun readNotes(): ReadNotesResult =
         when (val accessLevel = cryptor.accessLevel) {
-            AccessLevel.Empty -> ReadNotesResult(
-                accessLevel,
-                emptySet()
-            )
             AccessLevel.ConfidentialLocked -> ReadNotesResult(
                 accessLevel,
                 emptySet()
