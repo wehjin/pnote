@@ -62,7 +62,6 @@ class ActiveFocus(private val channel: SendChannel<RenderAction>) {
         val currentFocus = focusId?.let { focusables[it] }
         currentFocus?.let { start ->
             val nextFocusId = start.chooseHorizontalNeighbor(focusables, measureDistance)
-            println("NEXT FOCUS ID: $nextFocusId")
             nextFocusId?.let {
                 focusId = it
                 channel.offer(RenderAction.Refresh)
