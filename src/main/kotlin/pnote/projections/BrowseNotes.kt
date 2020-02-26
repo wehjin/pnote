@@ -16,7 +16,7 @@ import pnote.tools.security.plain.PlainDocument
 fun main() {
     val app = object : AppScope {
         override val logTag: String = "BrowseNotes2ProjectionTest"
-        override val cryptor: Cryptor = memCryptor()
+        override val cryptor: Cryptor = memCryptor(password("abc"))
         override val noteBag: NoteBag = object : NoteBag {
             override fun createNote(password: Password, note: Note): Long = error("Unused")
             override fun readNote(password: Password, noteId: Long): Note {

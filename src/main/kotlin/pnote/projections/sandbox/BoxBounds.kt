@@ -90,4 +90,18 @@ data class BoxBounds(
             (top until bottom).map { row -> block(col, row) }
         }.flatten()
     }
+
+    fun yOverlap(other: BoxBounds): Int {
+        return when {
+            other.bottom <= this.top -> -(this.top - other.bottom)
+            other.bottom <= this.bottom && other.top < this.top -> other.bottom - this.top
+            other.bottom <= this.bottom && other.top >= this.top -> other.height
+            other.bottom > this.bottom && other.top <= this.top -> other.height
+            other.bottom > this.bottom && other.top <= this.bottom -> this.bottom - other.top
+            else -> -(other.top - this.bottom)
+        }
+    }
+
+    fun rightDistanceTo(other: BoxBounds): Int = other.left - this.right
+    fun leftDistanceTo(other: BoxBounds): Int = this.left - other.right
 }

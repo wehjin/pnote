@@ -40,7 +40,37 @@ data class Focusable(
     val bounds: BoxBounds,
     val role: FocusRole,
     val keyReader: KeyReader
-)
+) {
+    fun rightDistanceTo(other: Focusable): Int = bounds.rightDistanceTo(other.bounds)
+    fun leftDistanceTo(other: Focusable): Int = bounds.leftDistanceTo(other.bounds)
+
+    fun chooseHorizontalNeighbor(
+        neighbors: MutableMap<Long, Focusable>,
+        measureDistance: (Focusable, Focusable) -> Int
+    ): Long? {
+        val (answer, _, _) = neighbors.values.fold(
+            initial = Triple(null as Focusable?, Int.MIN_VALUE, Int.MAX_VALUE),
+            operation = { (answer: Focusable?, answerOverlap: Int, answerDistance), next ->
+                val nextOverlap = bounds.yOverlap(next.bounds)
+                val nextDistance = measureDistance(this, next)
+                when {
+                    next == this -> Triple(answer, answerOverlap, answerDistance)
+                    nextDistance < 0 -> Triple(answer, answerOverlap, answerDistance)
+                    answer == null -> Triple(next, nextOverlap, nextDistance)
+                    nextOverlap < answerOverlap -> Triple(answer, answerOverlap, answerDistance)
+                    nextOverlap > answerOverlap -> Triple(next, nextOverlap, nextDistance)
+                    else -> when {
+                        nextDistance > answerDistance -> Triple(answer, answerOverlap, answerDistance)
+                        else -> Triple(next, nextOverlap, nextDistance)
+                    }
+                }
+            }
+        )
+        return answer?.focusableId
+    }
+
+}
+
 
 enum class FocusRole { Edit, Submit }
 

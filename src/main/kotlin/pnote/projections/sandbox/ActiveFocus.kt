@@ -6,36 +6,6 @@ import kotlinx.coroutines.channels.SendChannel
 import java.lang.Integer.max
 import java.lang.Integer.min
 
-class SparkEmitter {
-    private val sparkBlocks = mutableMapOf<Spark, SparkReadScope.() -> Unit>()
-
-    fun addSpark(spark: Spark, reader: SparkReadScope.() -> Unit) {
-        sparkBlocks[spark] = reader
-    }
-
-    fun clear() = sparkBlocks.clear()
-
-    fun emitSpark(keyStroke: KeyStroke): Boolean {
-        return keyStroke.asSpark()?.let { spark ->
-            sparkBlocks[spark]?.let { block ->
-                true.also {
-                    val scope = object : SparkReadScope {
-                        override val spark: Spark = spark
-                    }
-                    scope.run(block)
-                }
-            } ?: false
-        } ?: false
-    }
-
-    private fun KeyStroke.asSpark(): Spark? {
-        return when {
-            keyType == KeyType.Escape && !isCtrlDown && !isShiftDown && !isAltDown -> Spark.Back
-            else -> null
-        }
-    }
-}
-
 class ActiveFocus(private val channel: SendChannel<RenderAction>) {
     var focusId: Long? = null
     val focusables = mutableMapOf<Long, Focusable>()
@@ -72,19 +42,42 @@ class ActiveFocus(private val channel: SendChannel<RenderAction>) {
 
     private fun routeKeyToFocus(keyStroke: KeyStroke) {
         when (keyStroke.keyType) {
-            KeyType.ArrowDown, KeyType.ArrowUp -> {
-                val taken = keyReader?.receiveKey(keyStroke) ?: false
-                if (!taken) {
-                    when (keyStroke.keyType) {
-                        KeyType.ArrowDown -> moveFocusLinear(true)
-                        KeyType.ArrowUp -> moveFocusLinear(false)
-                        else -> check(false)
-                    }
-                }
-            }
+            KeyType.ArrowDown, KeyType.ArrowUp -> routeVerticalArrow(keyStroke)
+            KeyType.ArrowRight -> routeHorizontalArrow(keyStroke, Focusable::rightDistanceTo)
+            KeyType.ArrowLeft -> routeHorizontalArrow(keyStroke, Focusable::leftDistanceTo)
             KeyType.Tab -> moveFocusLinear(true)
             KeyType.ReverseTab -> moveFocusLinear(false)
             else -> keyReader?.receiveKey(keyStroke)
+        }
+    }
+
+    private fun routeHorizontalArrow(keyStroke: KeyStroke, measureDistance: (Focusable, Focusable) -> Int) {
+        val sunk = keyReader?.receiveKey(keyStroke) ?: false
+        if (!sunk) {
+            moveFocusToHorizontalNeighbor(measureDistance)
+        }
+    }
+
+    private fun moveFocusToHorizontalNeighbor(measureDistance: (Focusable, Focusable) -> Int) {
+        val currentFocus = focusId?.let { focusables[it] }
+        currentFocus?.let { start ->
+            val nextFocusId = start.chooseHorizontalNeighbor(focusables, measureDistance)
+            println("NEXT FOCUS ID: $nextFocusId")
+            nextFocusId?.let {
+                focusId = it
+                channel.offer(RenderAction.Refresh)
+            }
+        }
+    }
+
+    private fun routeVerticalArrow(keyStroke: KeyStroke) {
+        val taken = keyReader?.receiveKey(keyStroke) ?: false
+        if (!taken) {
+            when (keyStroke.keyType) {
+                KeyType.ArrowDown -> moveFocusLinear(true)
+                KeyType.ArrowUp -> moveFocusLinear(false)
+                else -> check(false)
+            }
         }
     }
 
